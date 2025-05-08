@@ -13,6 +13,7 @@ use static_cell::StaticCell;
 
 pub mod common;
 pub mod config;
+pub mod message_ram;
 pub mod pac;
 
 /// Allows for Transmit Operations
@@ -137,7 +138,7 @@ impl<M> FdCan<M> {
     #[inline]
     fn zero_msg_ram(&mut self) {
         // In case the Message RAM is equipped with parity or ECC functionality, it is recommended
-        // to initialize the Message RAM after hardware reset by writing e.g. 0x00000000 to each
+        // to initialize the Message RAM after hardware reset by writing e.g., 0x00000000 to each
         // Message RAM word to create valid parity/ECC checksums. This avoids that reading from
         // uninitialized Message RAM sections will activate interrupt IR.BEC (Bit Error Corrected)
         // or IR.BEU (Bit Error Uncorrected)
@@ -149,8 +150,9 @@ impl<M> FdCan<M> {
         }
     }
 
-    /// Enables or disables loopback mode: Internally connects the TX and RX
-    /// signals together.
+    /// Enables or disables loopback mode: Internally connects the TX and RX signals.
+    /// External loopback also drives TX pin.
+    /// Only use external loopback for production tests, as it will destroy ongoing external bus traffic.
     #[inline]
     fn set_loopback_mode(&mut self, mode: LoopbackMode) {
         let (test, mon, lbck) = match mode {
@@ -301,7 +303,7 @@ impl FdCan<ConfigMode> {
     /// parameters as follows:
     ///
     /// - *Clock Rate*: The input clock speed to the CAN peripheral (*not* the CPU clock speed).
-    ///   This is the clock rate of the peripheral bus the CAN peripheral is attached to (eg. APB1).
+    ///   This is the clock rate of the peripheral bus the CAN peripheral is attached to (e.g., APB1).
     /// - *Sample Point*: Should normally be left at the default value of 87.5%.
     /// - *SJW*: Should normally be left at the default value of 1.
     ///
