@@ -1,3 +1,4 @@
+use crate::message_ram::MessageRamLayout;
 use crate::pac::registers::regs::Ir;
 use core::num::{NonZeroU8, NonZeroU16};
 
@@ -208,7 +209,8 @@ pub enum TimestampPrescaler {
     _16 = 16,
 }
 
-/// Selects the source of the Timestamp counter
+/// Selects the source of the Timestamp counter.
+/// With CAN FD an external counter is required for timestamp generation (TSS = “10”) (Bosch MCAN: page 24)
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum TimestampSource {
@@ -339,6 +341,8 @@ pub struct FdCanConfig {
     pub timestamp_source: TimestampSource,
     /// Configures the Global Filter
     pub global_filter: GlobalFilter,
+    /// Configures RAM layout
+    pub layout: MessageRamLayout,
 
     pub power_down_timeout_iterations: u32,
     pub timeout_iterations: u32,
@@ -457,6 +461,7 @@ impl Default for FdCanConfig {
             clock_divider: ClockDivider::_1,
             timestamp_source: TimestampSource::None,
             global_filter: GlobalFilter::default(),
+            layout: Default::default(),
             power_down_timeout_iterations: 10_000_000,
             timeout_iterations: 1_000_000,
         }

@@ -11,9 +11,10 @@
     * async tx/rx
 * Use stm32-data generated register abstraction layer
 * Minimize usage of macros
-* Reduce amount of generics, for example, FdCan is not generic over CAN peripheral instance
-* Support raw timestamping in both Classical and FD modes, let user handle time conversions
+* Reduce number of generics, for example, FdCan is not generic over CAN peripheral instance
+* Support raw timestamping in both Classical and FD modes, let users handle time conversions
 * RAM layout configuration builder (similar to how usbd builds descriptors)
+    * Possibility to change layout, for each instance individually or recombine layouts into one and start over.
 * Dynamic reconfiguration
 * TX completion tracking (i.e., to support backpressure)
 * Time that frame spends in transmit queue before actual transmission (if requested to measure)

@@ -14,6 +14,9 @@ use static_cell::StaticCell;
 pub mod common;
 pub mod config;
 pub mod message_ram;
+pub use message_ram::{
+    DataFieldSize, ElevenBitFilters, MessageRamBuilder, MessageRamBuilderError, MessageRamLayout,
+};
 pub mod pac;
 
 /// Allows for Transmit Operations
@@ -295,6 +298,7 @@ impl FdCan<ConfigMode> {
         self.set_edge_filtering(config.edge_filtering);
         self.set_protocol_exception_handling(config.protocol_exception_handling);
         self.set_global_filter(config.global_filter);
+        self.set_layout(config.layout);
     }
 
     /// Configures the bit timings.
@@ -428,6 +432,52 @@ impl FdCan<ConfigMode> {
             w.set_anfe(filter.handle_extended_frames as u8);
             w.set_rrfs(filter.reject_remote_standard_frames);
             w.set_rrfe(filter.reject_remote_extended_frames);
+        });
+    }
+
+    /// Configures RAM layout for this instance
+    #[inline]
+    pub fn set_layout(&mut self, layout: MessageRamLayout) {
+        self.config.layout = layout;
+        self.regs.sidfc().modify(|w| {
+            w.set_flssa(layout.eleven_bit_filters_addr);
+            w.set_lss(layout.eleven_bit_filters_len);
+        });
+        self.regs.xidfc().modify(|w| {
+            w.set_flesa(layout.twenty_nine_bit_filters_addr);
+            w.set_lse(layout.twenty_nine_bit_filters_len);
+        });
+        self.regs.rxfc(0).modify(|w| {
+            w.set_fsa(layout.rx_fifo0_addr);
+            w.set_fs(layout.rx_fifo0_len);
+        });
+        self.regs.rxfc(1).modify(|w| {
+            w.set_fsa(layout.rx_fifo1_addr);
+            w.set_fs(layout.rx_fifo1_len);
+        });
+        self.regs.rxbc().modify(|w| {
+            w.set_rbsa(layout.rx_buffers_addr);
+        });
+        self.regs.rxesc().modify(|w| {
+            w.set_fds(0, layout.rx_fifo0_data_size.config_register());
+            w.set_fds(1, layout.rx_fifo1_data_size.config_register());
+        });
+        self.regs.txefc().modify(|w| {
+            w.set_efsa(layout.tx_event_fifo_addr);
+            w.set_efs(layout.tx_event_fifo_len);
+        });
+        self.regs.txbc().modify(|w| {
+            w.set_tbsa(layout.tx_buffers_addr);
+            w.set_tfqs(layout.tx_fifo_or_queue_len);
+            w.set_ndtb(layout.tx_buffers_len);
+        });
+        self.regs
+            .txesc()
+            .modify(|w| w.set_tbds(layout.tx_buffers_data_size.config_register()));
+        #[cfg(feature = "h7")]
+        self.regs.tttmc().modify(|w| {
+            w.set_tmsa(layout.trigger_memory_addr);
+            w.set_tme(layout.trigger_memory_len);
         });
     }
 }

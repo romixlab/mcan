@@ -2,50 +2,54 @@ use core::marker::PhantomData;
 use paste::paste;
 use static_cell::StaticCell;
 
-#[derive(Default)]
+#[derive(Default, Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MessageRamLayout {
-    eleven_bit_filters_addr: u16,
-    eleven_bit_filters_len: u8,
+    pub(crate) eleven_bit_filters_addr: u16,
+    pub(crate) eleven_bit_filters_len: u8,
 
-    twenty_nine_bit_filters_addr: u16,
-    twenty_nine_bit_filters_len: u8,
+    pub(crate) twenty_nine_bit_filters_addr: u16,
+    pub(crate) twenty_nine_bit_filters_len: u8,
 
-    rx_fifo0_addr: u16,
-    rx_fifo0_len: u8,
-    rx_fifo0_data_size: DataFieldSize,
+    pub(crate) rx_fifo0_addr: u16,
+    pub(crate) rx_fifo0_len: u8,
+    pub(crate) rx_fifo0_data_size: DataFieldSize,
 
-    rx_fifo1_addr: u16,
-    rx_fifo1_len: u8,
-    rx_fifo1_data_size: DataFieldSize,
+    pub(crate) rx_fifo1_addr: u16,
+    pub(crate) rx_fifo1_len: u8,
+    pub(crate) rx_fifo1_data_size: DataFieldSize,
 
-    rx_buffer_addr: u16,
+    pub(crate) rx_buffers_addr: u16,
     /// Not actually used, as 3 is implied, just to keep code clean
-    rx_buffer_len: u8,
-    rx_buffer_data_size: DataFieldSize,
+    pub(crate) rx_buffers_len: u8,
+    pub(crate) rx_buffers_data_size: DataFieldSize,
 
-    tx_event_fifo_addr: u16,
-    tx_event_fifo_len: u8,
+    pub(crate) tx_event_fifo_addr: u16,
+    pub(crate) tx_event_fifo_len: u8,
 
-    tx_buffer_addr: u16,
-    tx_buffer_len: u8,
-    tx_buffer_data_size: DataFieldSize,
+    pub(crate) tx_buffers_addr: u16,
+    /// Number of dedicated transmit buffers
+    pub(crate) tx_buffers_len: u8,
+    /// Transmit FIFO/Queue size
+    pub(crate) tx_fifo_or_queue_len: u8,
+    pub(crate) tx_buffers_data_size: DataFieldSize,
 
     #[cfg(feature = "h7")]
-    trigger_memory_addr: u16,
+    pub(crate) trigger_memory_addr: u16,
     #[cfg(feature = "h7")]
-    trigger_memory_size: u8,
+    pub(crate) trigger_memory_len: u8,
 }
 
 /// Data size of RX FIFO0/1, RX buffer and TX buffer element, total element size is 8 bytes longer (2 words header).
 /// Should probably be all the same, and either 8 bytes or 64 bytes, unless some very specific configuration is desired.
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DataFieldSize {
     #[default]
     _8Bytes,
     _12Bytes,
     _16Bytes,
+    _20Bytes,
     _24Bytes,
     _32Bytes,
     _48Bytes,
@@ -58,10 +62,24 @@ impl DataFieldSize {
             DataFieldSize::_8Bytes => 2,
             DataFieldSize::_12Bytes => 3,
             DataFieldSize::_16Bytes => 4,
+            DataFieldSize::_20Bytes => 5,
             DataFieldSize::_24Bytes => 6,
             DataFieldSize::_32Bytes => 8,
             DataFieldSize::_48Bytes => 12,
             DataFieldSize::_64Bytes => 16,
+        }
+    }
+
+    pub(crate) fn config_register(&self) -> u8 {
+        match self {
+            DataFieldSize::_8Bytes => 0b000,
+            DataFieldSize::_12Bytes => 0b001,
+            DataFieldSize::_16Bytes => 0b010,
+            DataFieldSize::_20Bytes => 0b011,
+            DataFieldSize::_24Bytes => 0b100,
+            DataFieldSize::_32Bytes => 0b101,
+            DataFieldSize::_48Bytes => 0b110,
+            DataFieldSize::_64Bytes => 0b111,
         }
     }
 }
@@ -93,6 +111,7 @@ pub struct MessageRamBuilder<S> {
     _phantom: PhantomData<S>,
 }
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum MessageRamBuilderError {
     BuilderTaken,
     TooManyElements,
@@ -244,14 +263,14 @@ impl MessageRamBuilder<RxBuffers> {
             Self::MAX_ELEMENTS,
             3,
             2 + data_size.words(),
-            rx_buffer
+            rx_buffers
         );
-        self.layout.rx_buffer_data_size = data_size;
+        self.layout.rx_buffers_data_size = data_size;
         Ok(self.into_state())
     }
 
     /// Skip allocating and move to the next step.
-    pub fn skip(self) -> MessageRamBuilder<TxEventFifo> {
+    pub fn skip_debug_buffers(self) -> MessageRamBuilder<TxEventFifo> {
         self.into_state()
     }
 }
@@ -278,23 +297,26 @@ impl MessageRamBuilder<TxBuffers> {
     #[cfg(feature = "h7")]
     const MAX_ELEMENTS: u8 = 32;
 
-    /// Allocate zero or more TX buffer elements and get a MessageRamLayout.
+    /// Allocate zero or more dedicated TX buffer elements + FIFO/Queue of size zero or more and get a MessageRamLayout.
     /// Also get a MessageRamBuilder in initial state to build layouts for other instances, if any.
     #[cfg(feature = "g0")]
     pub fn allocate_tx_buffers(
         mut self,
-        len: u8,
+        dedicated_buffers_len: u8,
+        fifo_or_queue_len: u8,
         data_size: DataFieldSize,
     ) -> Result<(MessageRamLayout, MessageRamBuilder<ElevenBitFilters>), MessageRamBuilderError>
     {
+        let len = fifo_or_queue_len + dedicated_buffers_len;
         check_and_advance!(
             self,
             Self::MAX_ELEMENTS,
             len,
             2 + data_size.words(),
-            tx_buffer
+            tx_buffers
         );
-        self.layout.tx_buffer_data_size = data_size;
+        self.layout.tx_fifo_or_queue_len = fifo_or_queue_len;
+        self.layout.tx_buffers_data_size = data_size;
         let layout = core::mem::take(&mut self.layout);
         Ok((layout, self.into_state()))
     }
@@ -303,8 +325,11 @@ impl MessageRamBuilder<TxBuffers> {
     #[cfg(feature = "h7")]
     pub fn allocate_tx_buffers(
         mut self,
-        len: u8,
+        dedicated_buffers_len: u8,
+        fifo_or_queue_len: u8,
+        data_size: DataFieldSize,
     ) -> Result<MessageRamBuilder<TriggerMemory>, MessageRamBuilderError> {
+        let len = fifo_or_queue_len + dedicated_buffers_len;
         check_and_advance!(
             self,
             Self::MAX_ELEMENTS,
@@ -312,7 +337,8 @@ impl MessageRamBuilder<TxBuffers> {
             2 + data_size.words(),
             tx_buffers
         );
-        self.layout.tx_buffer_data_size = data_size;
+        self.layout.tx_fifo_or_queue_len = fifo_or_queue_len;
+        self.layout.tx_buffers_data_size = data_size;
         Ok(self.into_state())
     }
 }
