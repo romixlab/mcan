@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 use paste::paste;
 use static_cell::StaticCell;
 
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MessageRamLayout {
     pub(crate) eleven_bit_filters_addr: u16,
@@ -42,10 +42,9 @@ pub struct MessageRamLayout {
 
 /// Data size of RX FIFO0/1, RX buffer and TX buffer element, total element size is 8 bytes longer (2 words header).
 /// Should probably be all the same, and either 8 bytes or 64 bytes, unless some very specific configuration is desired.
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DataFieldSize {
-    #[default]
     _8Bytes,
     _12Bytes,
     _16Bytes,
@@ -56,8 +55,34 @@ pub enum DataFieldSize {
     _64Bytes,
 }
 
+impl MessageRamLayout {
+    pub(crate) const fn default() -> Self {
+        Self {
+            eleven_bit_filters_addr: 0,
+            eleven_bit_filters_len: 0,
+            twenty_nine_bit_filters_addr: 0,
+            twenty_nine_bit_filters_len: 0,
+            rx_fifo0_addr: 0,
+            rx_fifo0_len: 0,
+            rx_fifo0_data_size: DataFieldSize::_8Bytes,
+            rx_fifo1_addr: 0,
+            rx_fifo1_len: 0,
+            rx_fifo1_data_size: DataFieldSize::_8Bytes,
+            rx_buffers_addr: 0,
+            rx_buffers_len: 0,
+            rx_buffers_data_size: DataFieldSize::_8Bytes,
+            tx_event_fifo_addr: 0,
+            tx_event_fifo_len: 0,
+            tx_buffers_addr: 0,
+            tx_buffers_len: 0,
+            tx_fifo_or_queue_len: 0,
+            tx_buffers_data_size: DataFieldSize::_8Bytes,
+        }
+    }
+}
+
 impl DataFieldSize {
-    fn words(&self) -> u16 {
+    const fn words(&self) -> u16 {
         match self {
             DataFieldSize::_8Bytes => 2,
             DataFieldSize::_12Bytes => 3,
@@ -70,7 +95,7 @@ impl DataFieldSize {
         }
     }
 
-    pub(crate) fn config_register(&self) -> u8 {
+    pub(crate) const fn config_register(&self) -> u8 {
         match self {
             DataFieldSize::_8Bytes => 0b000,
             DataFieldSize::_12Bytes => 0b001,
@@ -105,6 +130,7 @@ pub struct TxBuffers;
 #[cfg(feature = "h7")]
 pub struct TriggerMemory;
 
+/// Message RAM partitioner.
 pub struct MessageRamBuilder<S> {
     pos: u16,
     end: u16,
@@ -121,8 +147,8 @@ pub enum MessageRamBuilderError {
 
 static BUILDER_TAKEN: StaticCell<()> = StaticCell::new();
 
-pub fn message_ram_builder() -> Result<MessageRamBuilder<ElevenBitFilters>, MessageRamBuilderError>
-{
+pub(crate) fn message_ram_builder()
+-> Result<MessageRamBuilder<ElevenBitFilters>, MessageRamBuilderError> {
     if BUILDER_TAKEN.try_init(()).is_none() {
         return Err(MessageRamBuilderError::BuilderTaken);
     }
@@ -136,12 +162,12 @@ pub fn message_ram_builder() -> Result<MessageRamBuilder<ElevenBitFilters>, Mess
 }
 
 impl<S> MessageRamBuilder<S> {
-    fn into_state<S2>(self) -> MessageRamBuilder<S2> {
+    const fn into_state<S2>(self) -> MessageRamBuilder<S2> {
         MessageRamBuilder {
             pos: self.pos,
             end: self.end,
             layout: self.layout,
-            _phantom: Default::default(),
+            _phantom: PhantomData,
         }
     }
 }
@@ -170,7 +196,7 @@ impl MessageRamBuilder<ElevenBitFilters> {
     const MAX_ELEMENTS: u8 = 128;
 
     /// Allocate zero or more 11-bit filters and move to the next step.
-    pub fn allocate_11bit_filters(
+    pub const fn allocate_11bit_filters(
         mut self,
         len: u8,
     ) -> Result<MessageRamBuilder<TwentyNineBitFilters>, MessageRamBuilderError> {
@@ -191,7 +217,7 @@ impl MessageRamBuilder<TwentyNineBitFilters> {
     const MAX_ELEMENTS: u8 = 64;
 
     /// Allocate zero or more 29-bit filters and move to the next step.
-    pub fn allocate_29bit_filters(
+    pub const fn allocate_29bit_filters(
         mut self,
         len: u8,
     ) -> Result<MessageRamBuilder<RxFifo0>, MessageRamBuilderError> {
@@ -207,7 +233,7 @@ impl MessageRamBuilder<RxFifo0> {
     const MAX_ELEMENTS: u8 = 64;
 
     /// Allocate zero or more RX FIFO0 elements and move to the next step.
-    pub fn allocate_rx_fifo0_buffers(
+    pub const fn allocate_rx_fifo0_buffers(
         mut self,
         len: u8,
         data_size: DataFieldSize,
@@ -236,7 +262,7 @@ impl MessageRamBuilder<RxFifo1> {
     const MAX_ELEMENTS: u8 = 64;
 
     /// Allocate zero or more RX FIFO1 elements and move to the next step.
-    pub fn allocate_rx_fifo1_buffers(
+    pub const fn allocate_rx_fifo1_buffers(
         mut self,
         len: u8,
         data_size: DataFieldSize,
@@ -258,7 +284,7 @@ impl MessageRamBuilder<RxBuffers> {
     const MAX_ELEMENTS: u8 = 64;
 
     /// Allocate dedicated RX buffers space and move to the next step.
-    pub fn allocate_rx_buffers(
+    pub const fn allocate_rx_buffers(
         mut self,
         len: u8,
         data_size: DataFieldSize,
@@ -275,7 +301,7 @@ impl MessageRamBuilder<RxBuffers> {
     }
 
     /// Skip allocating and move to the next step.
-    pub fn skip_debug_buffers(self) -> MessageRamBuilder<TxEventFifo> {
+    pub const fn skip_debug_buffers(self) -> MessageRamBuilder<TxEventFifo> {
         self.into_state()
     }
 }
@@ -287,7 +313,7 @@ impl MessageRamBuilder<TxEventFifo> {
     const MAX_ELEMENTS: u8 = 32;
 
     /// Allocate zero or more TX Event FIFO elements and move to the next step.
-    pub fn allocate_tx_event_fifo_buffers(
+    pub const fn allocate_tx_event_fifo_buffers(
         mut self,
         len: u8,
     ) -> Result<MessageRamBuilder<TxBuffers>, MessageRamBuilderError> {
@@ -305,7 +331,7 @@ impl MessageRamBuilder<TxBuffers> {
     /// Allocate zero or more dedicated TX buffer elements + FIFO/Queue of size zero or more and get a MessageRamLayout.
     /// Also get a MessageRamBuilder in initial state to build layouts for other instances, if any.
     #[cfg(feature = "g0")]
-    pub fn allocate_tx_buffers(
+    pub const fn allocate_tx_buffers(
         mut self,
         dedicated_buffers_len: u8,
         fifo_or_queue_len: u8,
@@ -322,13 +348,13 @@ impl MessageRamBuilder<TxBuffers> {
         );
         self.layout.tx_fifo_or_queue_len = fifo_or_queue_len;
         self.layout.tx_buffers_data_size = data_size;
-        let layout = core::mem::take(&mut self.layout);
+        let layout = self.layout;
         Ok((layout, self.into_state()))
     }
 
     /// Allocate zero or more TX buffer elements and move to the next step.
     #[cfg(feature = "h7")]
-    pub fn allocate_tx_buffers(
+    pub const fn allocate_tx_buffers(
         mut self,
         dedicated_buffers_len: u8,
         fifo_or_queue_len: u8,
@@ -354,13 +380,13 @@ impl MessageRamBuilder<TriggerMemory> {
 
     /// Allocate zero or more trigger elements and get a MessageRamLayout.
     /// Also get a MessageRamBuilder in initial state to build layouts for other instances, if any.
-    pub fn allocate_triggers(
+    pub const fn allocate_triggers(
         mut self,
         len: u8,
     ) -> Result<(MessageRamLayout, MessageRamBuilder<ElevenBitFilters>), MessageRamBuilderError>
     {
         check_and_advance!(self, Self::MAX_ELEMENTS, len, 2, trigger_memory);
-        let layout = core::mem::take(&mut self.layout);
+        let layout = self.layout;
         Ok((layout, self.into_state()))
     }
 }
