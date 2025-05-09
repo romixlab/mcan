@@ -1,3 +1,5 @@
+use crate::fdcan::Error;
+use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
 use crate::message_ram::MessageRamLayout;
 use crate::pac::registers::regs::Ir;
 use core::num::{NonZeroU8, NonZeroU16};
@@ -344,6 +346,8 @@ pub struct FdCanConfig {
     /// Configures RAM layout
     pub layout: MessageRamLayout,
 
+    //#[cfg(not(feature = "embassy"))]
+    /// How long to wait when entering PowerDownMode before returning an error.
     pub power_down_timeout_iterations: u32,
     pub timeout_iterations: u32,
 }
@@ -465,5 +469,228 @@ impl Default for FdCanConfig {
             power_down_timeout_iterations: 10_000_000,
             timeout_iterations: 1_000_000,
         }
+    }
+}
+
+impl FdCan<ConfigMode> {
+    #[inline]
+    pub fn into_internal_loopback(
+        mut self,
+    ) -> Result<FdCan<InternalLoopbackMode>, (Error, FdCan<ConfigMode>)> {
+        self.set_loopback_mode(LoopbackMode::Internal);
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    #[inline]
+    fn leave_init_mode(&mut self) -> Result<(), Error> {
+        self.apply_config(self.config);
+
+        self.regs.cccr().modify(|w| w.set_cce(false));
+        self.regs.cccr().modify(|w| w.set_init(false));
+        crate::util::checked_wait(
+            || self.regs.cccr().read().init(),
+            self.config.timeout_iterations,
+        )?;
+        Ok(())
+    }
+
+    /// Applies the settings of a new FdCanConfig See [`FdCanConfig`]
+    #[inline]
+    pub fn apply_config(&mut self, config: FdCanConfig) {
+        self.set_data_bit_timing(config.dbtr);
+        self.set_nominal_bit_timing(config.nbtr);
+        self.set_automatic_retransmit(config.automatic_retransmit);
+        self.set_transmit_pause(config.transmit_pause);
+        self.set_frame_transmit(config.frame_transmit);
+        self.select_interrupt_line_1(config.interrupt_line_config);
+        self.set_non_iso_mode(config.non_iso_mode);
+        self.set_edge_filtering(config.edge_filtering);
+        self.set_protocol_exception_handling(config.protocol_exception_handling);
+        self.set_global_filter(config.global_filter);
+        self.set_layout(config.layout);
+    }
+
+    /// Configures the bit timings.
+    ///
+    /// You can use <http://www.bittiming.can-wiki.info/> to calculate the `btr` parameter. Enter
+    /// parameters as follows:
+    ///
+    /// - *Clock Rate*: The input clock speed to the CAN peripheral (*not* the CPU clock speed).
+    ///   This is the clock rate of the peripheral bus the CAN peripheral is attached to (e.g., APB1).
+    /// - *Sample Point*: Should normally be left at the default value of 87.5%.
+    /// - *SJW*: Should normally be left at the default value of 1.
+    ///
+    /// Then copy the `CAN_BUS_TIME` register value from the table and pass it as the `btr`
+    /// parameter to this method.
+    #[inline]
+    pub fn set_nominal_bit_timing(&mut self, btr: NominalBitTiming) {
+        self.config.nbtr = btr;
+
+        self.regs.nbtp().write(|w| {
+            w.set_nbrp(btr.nbrp() - 1);
+            w.set_ntseg1(btr.ntseg1() - 1);
+            w.set_ntseg2(btr.ntseg2() - 1);
+            w.set_nsjw(btr.nsjw() - 1);
+        });
+    }
+
+    /// Configures the data bit timings for the FdCan Variable Bitrates.
+    /// This is not used when frame_transmit is set to anything other than AllowFdCanAndBRS.
+    #[inline]
+    pub fn set_data_bit_timing(&mut self, btr: DataBitTiming) {
+        self.config.dbtr = btr;
+
+        self.regs.dbtp().write(|w| {
+            w.set_dbrp(btr.dbrp() - 1);
+            w.set_dtseg1(btr.dtseg1() - 1);
+            w.set_dtseg2(btr.dtseg2() - 1);
+            w.set_dsjw(btr.dsjw() - 1);
+        });
+    }
+
+    /// Enables or disables automatic retransmission of messages
+    ///
+    /// If this is enabled, the CAN peripheral will automatically try to retransmit each frame
+    /// util it can be sent. Otherwise, it will try only once to send each frame.
+    ///
+    /// Automatic retransmission is enabled by default.
+    #[inline]
+    pub fn set_automatic_retransmit(&mut self, enabled: bool) {
+        self.regs.cccr().modify(|w| w.set_dar(!enabled));
+        self.config.automatic_retransmit = enabled;
+    }
+
+    /// Configures the transmit pause feature. See
+    /// [`FdCanConfig::set_transmit_pause`]
+    #[inline]
+    pub fn set_transmit_pause(&mut self, enabled: bool) {
+        self.regs.cccr().modify(|w| w.set_txp(enabled));
+        self.config.transmit_pause = enabled;
+    }
+
+    /// Configures non-iso mode. See [`FdCanConfig::set_non_iso_mode`]
+    #[inline]
+    pub fn set_non_iso_mode(&mut self, enabled: bool) {
+        self.regs.cccr().modify(|w| w.set_niso(enabled));
+        self.config.non_iso_mode = enabled;
+    }
+
+    /// Configures edge filtering. See [`FdCanConfig::set_edge_filtering`]
+    #[inline]
+    pub fn set_edge_filtering(&mut self, enabled: bool) {
+        self.regs.cccr().modify(|w| w.set_efbi(enabled));
+        self.config.edge_filtering = enabled;
+    }
+
+    /// Configures frame transmission mode. See
+    /// [`FdCanConfig::set_frame_transmit`]
+    #[inline]
+    pub fn set_frame_transmit(&mut self, fts: FrameTransmissionConfig) {
+        let (fdoe, brse) = match fts {
+            FrameTransmissionConfig::ClassicCanOnly => (false, false),
+            FrameTransmissionConfig::AllowFdCan => (true, false),
+            FrameTransmissionConfig::AllowFdCanAndBRS => (true, true),
+        };
+
+        self.regs.cccr().modify(|w| {
+            w.set_fdoe(fdoe);
+            w.set_bse(brse);
+        });
+
+        self.config.frame_transmit = fts;
+    }
+
+    /// Selects Interrupt Line 1 for the given interrupts. Interrupt Line 0 is
+    /// selected for all other interrupts. See
+    /// [`FdCanConfig::select_interrupt_line_1`]
+    pub fn select_interrupt_line_1(&mut self, l1int: Ir) {
+        self.regs.ils().modify(|w| w.0 = l1int.0);
+
+        self.config.interrupt_line_config = l1int;
+    }
+
+    /// Sets the protocol exception handling on/off
+    #[inline]
+    pub fn set_protocol_exception_handling(&mut self, enabled: bool) {
+        self.regs.cccr().modify(|w| w.set_pxhd(!enabled));
+
+        self.config.protocol_exception_handling = enabled;
+    }
+
+    /// Configures and resets the timestamp counter
+    #[inline]
+    pub fn set_timestamp_counter_source(&mut self, select: TimestampSource) {
+        let (tcp, tss) = match select {
+            TimestampSource::None => (0, 0b00),
+            TimestampSource::Prescaler(p) => (p as u8, 0b01),
+            TimestampSource::FromTIM3 => (0, 0b10),
+        };
+        self.regs.tscc().write(|w| {
+            w.set_tcp(tcp);
+            w.set_tss(tss);
+        });
+
+        self.config.timestamp_source = select;
+    }
+
+    /// Configures the global filter settings
+    #[inline]
+    pub fn set_global_filter(&mut self, filter: GlobalFilter) {
+        self.regs.gfc().modify(|w| {
+            w.set_anfs(filter.handle_standard_frames as u8);
+            w.set_anfe(filter.handle_extended_frames as u8);
+            w.set_rrfs(filter.reject_remote_standard_frames);
+            w.set_rrfe(filter.reject_remote_extended_frames);
+        });
+    }
+
+    /// Configures RAM layout for this instance
+    #[inline]
+    pub fn set_layout(&mut self, layout: MessageRamLayout) {
+        self.config.layout = layout;
+        self.regs.sidfc().modify(|w| {
+            w.set_flssa(layout.eleven_bit_filters_addr);
+            w.set_lss(layout.eleven_bit_filters_len);
+        });
+        self.regs.xidfc().modify(|w| {
+            w.set_flesa(layout.twenty_nine_bit_filters_addr);
+            w.set_lse(layout.twenty_nine_bit_filters_len);
+        });
+        self.regs.rxfc(0).modify(|w| {
+            w.set_fsa(layout.rx_fifo0_addr);
+            w.set_fs(layout.rx_fifo0_len);
+        });
+        self.regs.rxfc(1).modify(|w| {
+            w.set_fsa(layout.rx_fifo1_addr);
+            w.set_fs(layout.rx_fifo1_len);
+        });
+        self.regs.rxbc().modify(|w| {
+            w.set_rbsa(layout.rx_buffers_addr);
+        });
+        self.regs.rxesc().modify(|w| {
+            w.set_rbds(layout.rx_buffers_data_size.config_register());
+            w.set_fds(0, layout.rx_fifo0_data_size.config_register());
+            w.set_fds(1, layout.rx_fifo1_data_size.config_register());
+        });
+        self.regs.txefc().modify(|w| {
+            w.set_efsa(layout.tx_event_fifo_addr);
+            w.set_efs(layout.tx_event_fifo_len);
+        });
+        self.regs.txbc().modify(|w| {
+            w.set_tbsa(layout.tx_buffers_addr);
+            w.set_tfqs(layout.tx_fifo_or_queue_len);
+            w.set_ndtb(layout.tx_buffers_len);
+        });
+        self.regs
+            .txesc()
+            .modify(|w| w.set_tbds(layout.tx_buffers_data_size.config_register()));
+        #[cfg(feature = "h7")]
+        self.regs.tttmc().modify(|w| {
+            w.set_tmsa(layout.trigger_memory_addr);
+            w.set_tme(layout.trigger_memory_len);
+        });
     }
 }

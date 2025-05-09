@@ -21,311 +21,323 @@ impl Fdcan {
     }
     #[doc = "FDCAN Core Release Register"]
     #[inline(always)]
-    pub const fn crel(self) -> crate::common::Reg<regs::Crel, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0usize) as _) }
+    pub const fn crel(self) -> crate::pac_traits::Reg<regs::Crel, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0usize) as _) }
     }
     #[doc = "Endian Register"]
     #[inline(always)]
-    pub const fn endn(self) -> crate::common::Reg<regs::Endn, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x04usize) as _) }
+    pub const fn endn(self) -> crate::pac_traits::Reg<regs::Endn, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x04usize) as _) }
     }
     #[doc = "FDCAN Data Bit Timing and Prescaler Register"]
     #[inline(always)]
-    pub const fn dbtp(self) -> crate::common::Reg<regs::Dbtp, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0cusize) as _) }
+    pub const fn dbtp(self) -> crate::pac_traits::Reg<regs::Dbtp, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0cusize) as _) }
     }
     #[doc = "FDCAN Test Register"]
     #[inline(always)]
-    pub const fn test(self) -> crate::common::Reg<regs::Test, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x10usize) as _) }
+    pub const fn test(self) -> crate::pac_traits::Reg<regs::Test, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x10usize) as _) }
     }
     #[doc = "FDCAN RAM Watchdog Register"]
     #[inline(always)]
-    pub const fn rwd(self) -> crate::common::Reg<regs::Rwd, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x14usize) as _) }
+    pub const fn rwd(self) -> crate::pac_traits::Reg<regs::Rwd, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x14usize) as _) }
     }
     #[doc = "FDCAN CC Control Register"]
     #[inline(always)]
-    pub const fn cccr(self) -> crate::common::Reg<regs::Cccr, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x18usize) as _) }
+    pub const fn cccr(self) -> crate::pac_traits::Reg<regs::Cccr, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x18usize) as _) }
     }
     #[doc = "FDCAN Nominal Bit Timing and Prescaler Register"]
     #[inline(always)]
-    pub const fn nbtp(self) -> crate::common::Reg<regs::Nbtp, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x1cusize) as _) }
+    pub const fn nbtp(self) -> crate::pac_traits::Reg<regs::Nbtp, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x1cusize) as _) }
     }
     #[doc = "FDCAN Timestamp Counter Configuration Register"]
     #[inline(always)]
-    pub const fn tscc(self) -> crate::common::Reg<regs::Tscc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x20usize) as _) }
+    pub const fn tscc(self) -> crate::pac_traits::Reg<regs::Tscc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x20usize) as _) }
     }
     #[doc = "FDCAN Timestamp Counter Value Register"]
     #[inline(always)]
-    pub const fn tscv(self) -> crate::common::Reg<regs::Tscv, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x24usize) as _) }
+    pub const fn tscv(self) -> crate::pac_traits::Reg<regs::Tscv, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x24usize) as _) }
     }
     #[doc = "FDCAN Timeout Counter Configuration Register"]
     #[inline(always)]
-    pub const fn tocc(self) -> crate::common::Reg<regs::Tocc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x28usize) as _) }
+    pub const fn tocc(self) -> crate::pac_traits::Reg<regs::Tocc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x28usize) as _) }
     }
     #[doc = "FDCAN Timeout Counter Value Register"]
     #[inline(always)]
-    pub const fn tocv(self) -> crate::common::Reg<regs::Tocv, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x2cusize) as _) }
+    pub const fn tocv(self) -> crate::pac_traits::Reg<regs::Tocv, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x2cusize) as _) }
     }
     #[doc = "FDCAN Error Counter Register"]
     #[inline(always)]
-    pub const fn ecr(self) -> crate::common::Reg<regs::Ecr, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x40usize) as _) }
+    pub const fn ecr(self) -> crate::pac_traits::Reg<regs::Ecr, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x40usize) as _) }
     }
     #[doc = "FDCAN Protocol Status Register"]
     #[inline(always)]
-    pub const fn psr(self) -> crate::common::Reg<regs::Psr, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x44usize) as _) }
+    pub const fn psr(self) -> crate::pac_traits::Reg<regs::Psr, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x44usize) as _) }
     }
     #[doc = "FDCAN Transmitter Delay Compensation Register"]
     #[inline(always)]
-    pub const fn tdcr(self) -> crate::common::Reg<regs::Tdcr, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x48usize) as _) }
+    pub const fn tdcr(self) -> crate::pac_traits::Reg<regs::Tdcr, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x48usize) as _) }
     }
     #[doc = "FDCAN Interrupt Register"]
     #[inline(always)]
-    pub const fn ir(self) -> crate::common::Reg<regs::Ir, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x50usize) as _) }
+    pub const fn ir(self) -> crate::pac_traits::Reg<regs::Ir, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x50usize) as _) }
     }
     #[doc = "FDCAN Interrupt Enable Register"]
     #[inline(always)]
-    pub const fn ie(self) -> crate::common::Reg<regs::Ie, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x54usize) as _) }
+    pub const fn ie(self) -> crate::pac_traits::Reg<regs::Ie, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x54usize) as _) }
     }
     #[doc = "FDCAN Interrupt Line Select Register"]
     #[inline(always)]
-    pub const fn ils(self) -> crate::common::Reg<regs::Ils, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x58usize) as _) }
+    pub const fn ils(self) -> crate::pac_traits::Reg<regs::Ils, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x58usize) as _) }
     }
     #[doc = "FDCAN Interrupt Line Enable Register"]
     #[inline(always)]
-    pub const fn ile(self) -> crate::common::Reg<regs::Ile, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x5cusize) as _) }
+    pub const fn ile(self) -> crate::pac_traits::Reg<regs::Ile, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x5cusize) as _) }
     }
     #[doc = "FDCAN Global Filter Configuration Register"]
     #[inline(always)]
-    pub const fn gfc(self) -> crate::common::Reg<regs::Gfc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x80usize) as _) }
+    pub const fn gfc(self) -> crate::pac_traits::Reg<regs::Gfc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x80usize) as _) }
     }
     #[doc = "FDCAN Standard ID Filter Configuration Register"]
     #[inline(always)]
-    pub const fn sidfc(self) -> crate::common::Reg<regs::Sidfc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x84usize) as _) }
+    pub const fn sidfc(self) -> crate::pac_traits::Reg<regs::Sidfc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x84usize) as _) }
     }
     #[doc = "FDCAN Extended ID Filter Configuration Register"]
     #[inline(always)]
-    pub const fn xidfc(self) -> crate::common::Reg<regs::Xidfc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x88usize) as _) }
+    pub const fn xidfc(self) -> crate::pac_traits::Reg<regs::Xidfc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x88usize) as _) }
     }
     #[doc = "FDCAN Extended ID and Mask Register"]
     #[inline(always)]
-    pub const fn xidam(self) -> crate::common::Reg<regs::Xidam, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x90usize) as _) }
+    pub const fn xidam(self) -> crate::pac_traits::Reg<regs::Xidam, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x90usize) as _) }
     }
     #[doc = "FDCAN High Priority Message Status Register"]
     #[inline(always)]
-    pub const fn hpms(self) -> crate::common::Reg<regs::Hpms, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x94usize) as _) }
+    pub const fn hpms(self) -> crate::pac_traits::Reg<regs::Hpms, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x94usize) as _) }
     }
     #[doc = "FDCAN New Data 1 Register"]
     #[inline(always)]
-    pub const fn ndat1(self) -> crate::common::Reg<regs::Ndat1, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x98usize) as _) }
+    pub const fn ndat1(self) -> crate::pac_traits::Reg<regs::Ndat1, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x98usize) as _) }
     }
     #[doc = "FDCAN New Data 2 Register"]
     #[inline(always)]
-    pub const fn ndat2(self) -> crate::common::Reg<regs::Ndat2, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x9cusize) as _) }
+    pub const fn ndat2(self) -> crate::pac_traits::Reg<regs::Ndat2, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x9cusize) as _) }
     }
     #[doc = "FDCAN Rx FIFO X Configuration Register"]
     #[inline(always)]
-    pub const fn rxfc(self, n: usize) -> crate::common::Reg<regs::Rxfc, crate::common::RW> {
+    pub const fn rxfc(self, n: usize) -> crate::pac_traits::Reg<regs::Rxfc, crate::pac_traits::RW> {
         assert!(n < 2usize);
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xa0usize + ([0usize, 16usize][n] as usize)) as _) }
+        unsafe {
+            crate::pac_traits::Reg::from_ptr(
+                self.ptr.add(0xa0usize + ([0usize, 16usize][n] as usize)) as _,
+            )
+        }
     }
     #[doc = "FDCAN Rx FIFO X Status Register"]
     #[inline(always)]
-    pub const fn rxfs(self, n: usize) -> crate::common::Reg<regs::Rxfs, crate::common::RW> {
+    pub const fn rxfs(self, n: usize) -> crate::pac_traits::Reg<regs::Rxfs, crate::pac_traits::RW> {
         assert!(n < 2usize);
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xa4usize + ([0usize, 16usize][n] as usize)) as _) }
+        unsafe {
+            crate::pac_traits::Reg::from_ptr(
+                self.ptr.add(0xa4usize + ([0usize, 16usize][n] as usize)) as _,
+            )
+        }
     }
     #[doc = "CAN Rx FIFO X Acknowledge Register"]
     #[inline(always)]
-    pub const fn rxfa(self, n: usize) -> crate::common::Reg<regs::Rxfa, crate::common::RW> {
+    pub const fn rxfa(self, n: usize) -> crate::pac_traits::Reg<regs::Rxfa, crate::pac_traits::RW> {
         assert!(n < 2usize);
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xa8usize + ([0usize, 16usize][n] as usize)) as _) }
+        unsafe {
+            crate::pac_traits::Reg::from_ptr(
+                self.ptr.add(0xa8usize + ([0usize, 16usize][n] as usize)) as _,
+            )
+        }
     }
     #[doc = "FDCAN Rx Buffer Configuration Register"]
     #[inline(always)]
-    pub const fn rxbc(self) -> crate::common::Reg<regs::Rxbc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xacusize) as _) }
+    pub const fn rxbc(self) -> crate::pac_traits::Reg<regs::Rxbc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xacusize) as _) }
     }
     #[doc = "FDCAN Rx Buffer Element Size Configuration Register"]
     #[inline(always)]
-    pub const fn rxesc(self) -> crate::common::Reg<regs::Rxesc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xbcusize) as _) }
+    pub const fn rxesc(self) -> crate::pac_traits::Reg<regs::Rxesc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xbcusize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Configuration Register"]
     #[inline(always)]
-    pub const fn txbc(self) -> crate::common::Reg<regs::Txbc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xc0usize) as _) }
+    pub const fn txbc(self) -> crate::pac_traits::Reg<regs::Txbc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xc0usize) as _) }
     }
     #[doc = "FDCAN Tx FIFO/Queue Status Register"]
     #[inline(always)]
-    pub const fn txfqs(self) -> crate::common::Reg<regs::Txfqs, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xc4usize) as _) }
+    pub const fn txfqs(self) -> crate::pac_traits::Reg<regs::Txfqs, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xc4usize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Element Size Configuration Register"]
     #[inline(always)]
-    pub const fn txesc(self) -> crate::common::Reg<regs::Txesc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xc8usize) as _) }
+    pub const fn txesc(self) -> crate::pac_traits::Reg<regs::Txesc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xc8usize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Request Pending Register"]
     #[inline(always)]
-    pub const fn txbrp(self) -> crate::common::Reg<regs::Txbrp, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xccusize) as _) }
+    pub const fn txbrp(self) -> crate::pac_traits::Reg<regs::Txbrp, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xccusize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Add Request Register"]
     #[inline(always)]
-    pub const fn txbar(self) -> crate::common::Reg<regs::Txbar, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xd0usize) as _) }
+    pub const fn txbar(self) -> crate::pac_traits::Reg<regs::Txbar, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xd0usize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Cancellation Request Register"]
     #[inline(always)]
-    pub const fn txbcr(self) -> crate::common::Reg<regs::Txbcr, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xd4usize) as _) }
+    pub const fn txbcr(self) -> crate::pac_traits::Reg<regs::Txbcr, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xd4usize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Transmission Occurred Register"]
     #[inline(always)]
-    pub const fn txbto(self) -> crate::common::Reg<regs::Txbto, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xd8usize) as _) }
+    pub const fn txbto(self) -> crate::pac_traits::Reg<regs::Txbto, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xd8usize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Cancellation Finished Register"]
     #[inline(always)]
-    pub const fn txbcf(self) -> crate::common::Reg<regs::Txbcf, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xdcusize) as _) }
+    pub const fn txbcf(self) -> crate::pac_traits::Reg<regs::Txbcf, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xdcusize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Transmission Interrupt Enable Register"]
     #[inline(always)]
-    pub const fn txbtie(self) -> crate::common::Reg<regs::Txbtie, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xe0usize) as _) }
+    pub const fn txbtie(self) -> crate::pac_traits::Reg<regs::Txbtie, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xe0usize) as _) }
     }
     #[doc = "FDCAN Tx Buffer Cancellation Finished Interrupt Enable Register"]
     #[inline(always)]
-    pub const fn txbcie(self) -> crate::common::Reg<regs::Txbcie, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xe4usize) as _) }
+    pub const fn txbcie(self) -> crate::pac_traits::Reg<regs::Txbcie, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xe4usize) as _) }
     }
     #[doc = "FDCAN Tx Event FIFO Configuration Register"]
     #[inline(always)]
-    pub const fn txefc(self) -> crate::common::Reg<regs::Txefc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xf0usize) as _) }
+    pub const fn txefc(self) -> crate::pac_traits::Reg<regs::Txefc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xf0usize) as _) }
     }
     #[doc = "FDCAN Tx Event FIFO Status Register"]
     #[inline(always)]
-    pub const fn txefs(self) -> crate::common::Reg<regs::Txefs, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xf4usize) as _) }
+    pub const fn txefs(self) -> crate::pac_traits::Reg<regs::Txefs, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xf4usize) as _) }
     }
     #[doc = "FDCAN Tx Event FIFO Acknowledge Register"]
     #[inline(always)]
-    pub const fn txefa(self) -> crate::common::Reg<regs::Txefa, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0xf8usize) as _) }
+    pub const fn txefa(self) -> crate::pac_traits::Reg<regs::Txefa, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0xf8usize) as _) }
     }
     #[doc = "FDCAN TT Trigger Memory Configuration Register"]
     #[inline(always)]
-    pub const fn tttmc(self) -> crate::common::Reg<regs::Tttmc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0100usize) as _) }
+    pub const fn tttmc(self) -> crate::pac_traits::Reg<regs::Tttmc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0100usize) as _) }
     }
     #[doc = "FDCAN TT Reference Message Configuration Register"]
     #[inline(always)]
-    pub const fn ttrmc(self) -> crate::common::Reg<regs::Ttrmc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0104usize) as _) }
+    pub const fn ttrmc(self) -> crate::pac_traits::Reg<regs::Ttrmc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0104usize) as _) }
     }
     #[doc = "FDCAN TT Operation Configuration Register"]
     #[inline(always)]
-    pub const fn ttocf(self) -> crate::common::Reg<regs::Ttocf, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0108usize) as _) }
+    pub const fn ttocf(self) -> crate::pac_traits::Reg<regs::Ttocf, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0108usize) as _) }
     }
     #[doc = "FDCAN TT Matrix Limits Register"]
     #[inline(always)]
-    pub const fn ttmlm(self) -> crate::common::Reg<regs::Ttmlm, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x010cusize) as _) }
+    pub const fn ttmlm(self) -> crate::pac_traits::Reg<regs::Ttmlm, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x010cusize) as _) }
     }
     #[doc = "FDCAN TUR Configuration Register"]
     #[inline(always)]
-    pub const fn turcf(self) -> crate::common::Reg<regs::Turcf, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0110usize) as _) }
+    pub const fn turcf(self) -> crate::pac_traits::Reg<regs::Turcf, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0110usize) as _) }
     }
     #[doc = "FDCAN TT Operation Control Register"]
     #[inline(always)]
-    pub const fn ttocn(self) -> crate::common::Reg<regs::Ttocn, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0114usize) as _) }
+    pub const fn ttocn(self) -> crate::pac_traits::Reg<regs::Ttocn, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0114usize) as _) }
     }
     #[doc = "FDCAN TT Global Time Preset Register"]
     #[inline(always)]
-    pub const fn ttgtp(self) -> crate::common::Reg<regs::Ttgtp, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0118usize) as _) }
+    pub const fn ttgtp(self) -> crate::pac_traits::Reg<regs::Ttgtp, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0118usize) as _) }
     }
     #[doc = "FDCAN TT Time Mark Register"]
     #[inline(always)]
-    pub const fn tttmk(self) -> crate::common::Reg<regs::Tttmk, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x011cusize) as _) }
+    pub const fn tttmk(self) -> crate::pac_traits::Reg<regs::Tttmk, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x011cusize) as _) }
     }
     #[doc = "FDCAN TT Interrupt Register"]
     #[inline(always)]
-    pub const fn ttir(self) -> crate::common::Reg<regs::Ttir, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0120usize) as _) }
+    pub const fn ttir(self) -> crate::pac_traits::Reg<regs::Ttir, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0120usize) as _) }
     }
     #[doc = "FDCAN TT Interrupt Enable Register"]
     #[inline(always)]
-    pub const fn ttie(self) -> crate::common::Reg<regs::Ttie, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0124usize) as _) }
+    pub const fn ttie(self) -> crate::pac_traits::Reg<regs::Ttie, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0124usize) as _) }
     }
     #[doc = "FDCAN TT Interrupt Line Select Register"]
     #[inline(always)]
-    pub const fn ttils(self) -> crate::common::Reg<regs::Ttils, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0128usize) as _) }
+    pub const fn ttils(self) -> crate::pac_traits::Reg<regs::Ttils, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0128usize) as _) }
     }
     #[doc = "FDCAN TT Operation Status Register"]
     #[inline(always)]
-    pub const fn ttost(self) -> crate::common::Reg<regs::Ttost, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x012cusize) as _) }
+    pub const fn ttost(self) -> crate::pac_traits::Reg<regs::Ttost, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x012cusize) as _) }
     }
     #[doc = "FDCAN TUR Numerator Actual Register"]
     #[inline(always)]
-    pub const fn turna(self) -> crate::common::Reg<regs::Turna, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0130usize) as _) }
+    pub const fn turna(self) -> crate::pac_traits::Reg<regs::Turna, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0130usize) as _) }
     }
     #[doc = "FDCAN TT Local and Global Time Register"]
     #[inline(always)]
-    pub const fn ttlgt(self) -> crate::common::Reg<regs::Ttlgt, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0134usize) as _) }
+    pub const fn ttlgt(self) -> crate::pac_traits::Reg<regs::Ttlgt, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0134usize) as _) }
     }
     #[doc = "FDCAN TT Cycle Time and Count Register"]
     #[inline(always)]
-    pub const fn ttctc(self) -> crate::common::Reg<regs::Ttctc, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0138usize) as _) }
+    pub const fn ttctc(self) -> crate::pac_traits::Reg<regs::Ttctc, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0138usize) as _) }
     }
     #[doc = "FDCAN TT Capture Time Register"]
     #[inline(always)]
-    pub const fn ttcpt(self) -> crate::common::Reg<regs::Ttcpt, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x013cusize) as _) }
+    pub const fn ttcpt(self) -> crate::pac_traits::Reg<regs::Ttcpt, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x013cusize) as _) }
     }
     #[doc = "FDCAN TT Cycle Sync Mark Register"]
     #[inline(always)]
-    pub const fn ttcsm(self) -> crate::common::Reg<regs::Ttcsm, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0140usize) as _) }
+    pub const fn ttcsm(self) -> crate::pac_traits::Reg<regs::Ttcsm, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0140usize) as _) }
     }
     #[doc = "FDCAN TT Trigger Select Register"]
     #[inline(always)]
-    pub const fn ttts(self) -> crate::common::Reg<regs::Ttts, crate::common::RW> {
-        unsafe { crate::common::Reg::from_ptr(self.ptr.add(0x0300usize) as _) }
+    pub const fn ttts(self) -> crate::pac_traits::Reg<regs::Ttts, crate::pac_traits::RW> {
+        unsafe { crate::pac_traits::Reg::from_ptr(self.ptr.add(0x0300usize) as _) }
     }
 }
 //#[allow(dead_code)]
@@ -519,7 +531,24 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Cccr {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Cccr {{ init: {=bool:?}, cce: {=bool:?}, asm: {=bool:?}, csa: {=bool:?}, csr: {=bool:?}, mon: {=bool:?}, dar: {=bool:?}, test: {=bool:?}, fdoe: {=bool:?}, bse: {=bool:?}, pxhd: {=bool:?}, efbi: {=bool:?}, txp: {=bool:?}, niso: {=bool:?} }}" , self . init () , self . cce () , self . asm () , self . csa () , self . csr () , self . mon () , self . dar () , self . test () , self . fdoe () , self . bse () , self . pxhd () , self . efbi () , self . txp () , self . niso ())
+            defmt::write!(
+                f,
+                "Cccr {{ init: {=bool:?}, cce: {=bool:?}, asm: {=bool:?}, csa: {=bool:?}, csr: {=bool:?}, mon: {=bool:?}, dar: {=bool:?}, test: {=bool:?}, fdoe: {=bool:?}, bse: {=bool:?}, pxhd: {=bool:?}, efbi: {=bool:?}, txp: {=bool:?}, niso: {=bool:?} }}",
+                self.init(),
+                self.cce(),
+                self.asm(),
+                self.csa(),
+                self.csr(),
+                self.mon(),
+                self.dar(),
+                self.test(),
+                self.fdoe(),
+                self.bse(),
+                self.pxhd(),
+                self.efbi(),
+                self.txp(),
+                self.niso()
+            )
         }
     }
     #[doc = "FDCAN Core Release Register"]
@@ -1343,7 +1372,40 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ie {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ie {{ rfne[0]: {=bool:?}, rfne[1]: {=bool:?}, rfwe[0]: {=bool:?}, rfwe[1]: {=bool:?}, rffe[0]: {=bool:?}, rffe[1]: {=bool:?}, rfle[0]: {=bool:?}, rfle[1]: {=bool:?}, hpme: {=bool:?}, tce: {=bool:?}, tcfe: {=bool:?}, tefe: {=bool:?}, tefne: {=bool:?}, tefwe: {=bool:?}, teffe: {=bool:?}, tefle: {=bool:?}, tswe: {=bool:?}, mrafe: {=bool:?}, tooe: {=bool:?}, drxe: {=bool:?}, bece: {=bool:?}, beue: {=bool:?}, eloe: {=bool:?}, epe: {=bool:?}, ewe: {=bool:?}, boe: {=bool:?}, wdie: {=bool:?}, peae: {=bool:?}, pede: {=bool:?}, arae: {=bool:?} }}" , self . rfne (0usize) , self . rfne (1usize) , self . rfwe (0usize) , self . rfwe (1usize) , self . rffe (0usize) , self . rffe (1usize) , self . rfle (0usize) , self . rfle (1usize) , self . hpme () , self . tce () , self . tcfe () , self . tefe () , self . tefne () , self . tefwe () , self . teffe () , self . tefle () , self . tswe () , self . mrafe () , self . tooe () , self . drxe () , self . bece () , self . beue () , self . eloe () , self . epe () , self . ewe () , self . boe () , self . wdie () , self . peae () , self . pede () , self . arae ())
+            defmt::write!(
+                f,
+                "Ie {{ rfne[0]: {=bool:?}, rfne[1]: {=bool:?}, rfwe[0]: {=bool:?}, rfwe[1]: {=bool:?}, rffe[0]: {=bool:?}, rffe[1]: {=bool:?}, rfle[0]: {=bool:?}, rfle[1]: {=bool:?}, hpme: {=bool:?}, tce: {=bool:?}, tcfe: {=bool:?}, tefe: {=bool:?}, tefne: {=bool:?}, tefwe: {=bool:?}, teffe: {=bool:?}, tefle: {=bool:?}, tswe: {=bool:?}, mrafe: {=bool:?}, tooe: {=bool:?}, drxe: {=bool:?}, bece: {=bool:?}, beue: {=bool:?}, eloe: {=bool:?}, epe: {=bool:?}, ewe: {=bool:?}, boe: {=bool:?}, wdie: {=bool:?}, peae: {=bool:?}, pede: {=bool:?}, arae: {=bool:?} }}",
+                self.rfne(0usize),
+                self.rfne(1usize),
+                self.rfwe(0usize),
+                self.rfwe(1usize),
+                self.rffe(0usize),
+                self.rffe(1usize),
+                self.rfle(0usize),
+                self.rfle(1usize),
+                self.hpme(),
+                self.tce(),
+                self.tcfe(),
+                self.tefe(),
+                self.tefne(),
+                self.tefwe(),
+                self.teffe(),
+                self.tefle(),
+                self.tswe(),
+                self.mrafe(),
+                self.tooe(),
+                self.drxe(),
+                self.bece(),
+                self.beue(),
+                self.eloe(),
+                self.epe(),
+                self.ewe(),
+                self.boe(),
+                self.wdie(),
+                self.peae(),
+                self.pede(),
+                self.arae()
+            )
         }
     }
     #[doc = "FDCAN Interrupt Line Enable Register"]
@@ -1752,7 +1814,40 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ils {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ils {{ rfnl[0]: {=bool:?}, rfnl[1]: {=bool:?}, rfwl[0]: {=bool:?}, rfwl[1]: {=bool:?}, rffl[0]: {=bool:?}, rffl[1]: {=bool:?}, rfll[0]: {=bool:?}, rfll[1]: {=bool:?}, hpml: {=bool:?}, tcl: {=bool:?}, tcfl: {=bool:?}, tefl: {=bool:?}, tefnl: {=bool:?}, tefwl: {=bool:?}, teffl: {=bool:?}, tefll: {=bool:?}, tswl: {=bool:?}, mrafl: {=bool:?}, tool: {=bool:?}, drxl: {=bool:?}, becl: {=bool:?}, beul: {=bool:?}, elol: {=bool:?}, epl: {=bool:?}, ewl: {=bool:?}, bol: {=bool:?}, wdil: {=bool:?}, peal: {=bool:?}, pedl: {=bool:?}, aral: {=bool:?} }}" , self . rfnl (0usize) , self . rfnl (1usize) , self . rfwl (0usize) , self . rfwl (1usize) , self . rffl (0usize) , self . rffl (1usize) , self . rfll (0usize) , self . rfll (1usize) , self . hpml () , self . tcl () , self . tcfl () , self . tefl () , self . tefnl () , self . tefwl () , self . teffl () , self . tefll () , self . tswl () , self . mrafl () , self . tool () , self . drxl () , self . becl () , self . beul () , self . elol () , self . epl () , self . ewl () , self . bol () , self . wdil () , self . peal () , self . pedl () , self . aral ())
+            defmt::write!(
+                f,
+                "Ils {{ rfnl[0]: {=bool:?}, rfnl[1]: {=bool:?}, rfwl[0]: {=bool:?}, rfwl[1]: {=bool:?}, rffl[0]: {=bool:?}, rffl[1]: {=bool:?}, rfll[0]: {=bool:?}, rfll[1]: {=bool:?}, hpml: {=bool:?}, tcl: {=bool:?}, tcfl: {=bool:?}, tefl: {=bool:?}, tefnl: {=bool:?}, tefwl: {=bool:?}, teffl: {=bool:?}, tefll: {=bool:?}, tswl: {=bool:?}, mrafl: {=bool:?}, tool: {=bool:?}, drxl: {=bool:?}, becl: {=bool:?}, beul: {=bool:?}, elol: {=bool:?}, epl: {=bool:?}, ewl: {=bool:?}, bol: {=bool:?}, wdil: {=bool:?}, peal: {=bool:?}, pedl: {=bool:?}, aral: {=bool:?} }}",
+                self.rfnl(0usize),
+                self.rfnl(1usize),
+                self.rfwl(0usize),
+                self.rfwl(1usize),
+                self.rffl(0usize),
+                self.rffl(1usize),
+                self.rfll(0usize),
+                self.rfll(1usize),
+                self.hpml(),
+                self.tcl(),
+                self.tcfl(),
+                self.tefl(),
+                self.tefnl(),
+                self.tefwl(),
+                self.teffl(),
+                self.tefll(),
+                self.tswl(),
+                self.mrafl(),
+                self.tool(),
+                self.drxl(),
+                self.becl(),
+                self.beul(),
+                self.elol(),
+                self.epl(),
+                self.ewl(),
+                self.bol(),
+                self.wdil(),
+                self.peal(),
+                self.pedl(),
+                self.aral()
+            )
         }
     }
     #[doc = "FDCAN Interrupt Register"]
@@ -2084,7 +2179,38 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ir {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ir {{ rfn[0]: {=bool:?}, rfn[1]: {=bool:?}, rfw[0]: {=bool:?}, rfw[1]: {=bool:?}, rff[0]: {=bool:?}, rff[1]: {=bool:?}, rfl[0]: {=bool:?}, rfl[1]: {=bool:?}, hpm: {=bool:?}, tc: {=bool:?}, tcf: {=bool:?}, tef: {=bool:?}, tefn: {=bool:?}, tefw: {=bool:?}, teff: {=bool:?}, tefl: {=bool:?}, tsw: {=bool:?}, mraf: {=bool:?}, too: {=bool:?}, drx: {=bool:?}, elo: {=bool:?}, ep: {=bool:?}, ew: {=bool:?}, bo: {=bool:?}, wdi: {=bool:?}, pea: {=bool:?}, ped: {=bool:?}, ara: {=bool:?} }}" , self . rfn (0usize) , self . rfn (1usize) , self . rfw (0usize) , self . rfw (1usize) , self . rff (0usize) , self . rff (1usize) , self . rfl (0usize) , self . rfl (1usize) , self . hpm () , self . tc () , self . tcf () , self . tef () , self . tefn () , self . tefw () , self . teff () , self . tefl () , self . tsw () , self . mraf () , self . too () , self . drx () , self . elo () , self . ep () , self . ew () , self . bo () , self . wdi () , self . pea () , self . ped () , self . ara ())
+            defmt::write!(
+                f,
+                "Ir {{ rfn[0]: {=bool:?}, rfn[1]: {=bool:?}, rfw[0]: {=bool:?}, rfw[1]: {=bool:?}, rff[0]: {=bool:?}, rff[1]: {=bool:?}, rfl[0]: {=bool:?}, rfl[1]: {=bool:?}, hpm: {=bool:?}, tc: {=bool:?}, tcf: {=bool:?}, tef: {=bool:?}, tefn: {=bool:?}, tefw: {=bool:?}, teff: {=bool:?}, tefl: {=bool:?}, tsw: {=bool:?}, mraf: {=bool:?}, too: {=bool:?}, drx: {=bool:?}, elo: {=bool:?}, ep: {=bool:?}, ew: {=bool:?}, bo: {=bool:?}, wdi: {=bool:?}, pea: {=bool:?}, ped: {=bool:?}, ara: {=bool:?} }}",
+                self.rfn(0usize),
+                self.rfn(1usize),
+                self.rfw(0usize),
+                self.rfw(1usize),
+                self.rff(0usize),
+                self.rff(1usize),
+                self.rfl(0usize),
+                self.rfl(1usize),
+                self.hpm(),
+                self.tc(),
+                self.tcf(),
+                self.tef(),
+                self.tefn(),
+                self.tefw(),
+                self.teff(),
+                self.tefl(),
+                self.tsw(),
+                self.mraf(),
+                self.too(),
+                self.drx(),
+                self.elo(),
+                self.ep(),
+                self.ew(),
+                self.bo(),
+                self.wdi(),
+                self.pea(),
+                self.ped(),
+                self.ara()
+            )
         }
     }
     #[doc = "FDCAN Nominal Bit Timing and Prescaler Register"]
@@ -2387,7 +2513,21 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Psr {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Psr {{ lec: {=u8:?}, act: {=u8:?}, ep: {=bool:?}, ew: {=bool:?}, bo: {=bool:?}, dlec: {=u8:?}, resi: {=bool:?}, rbrs: {=bool:?}, redl: {=bool:?}, pxe: {=bool:?}, tdcv: {=u8:?} }}" , self . lec () , self . act () , self . ep () , self . ew () , self . bo () , self . dlec () , self . resi () , self . rbrs () , self . redl () , self . pxe () , self . tdcv ())
+            defmt::write!(
+                f,
+                "Psr {{ lec: {=u8:?}, act: {=u8:?}, ep: {=bool:?}, ew: {=bool:?}, bo: {=bool:?}, dlec: {=u8:?}, resi: {=bool:?}, rbrs: {=bool:?}, redl: {=bool:?}, pxe: {=bool:?}, tdcv: {=u8:?} }}",
+                self.lec(),
+                self.act(),
+                self.ep(),
+                self.ew(),
+                self.bo(),
+                self.dlec(),
+                self.resi(),
+                self.rbrs(),
+                self.redl(),
+                self.pxe(),
+                self.tdcv()
+            )
         }
     }
     #[doc = "FDCAN RAM Watchdog Register"]
@@ -2435,7 +2575,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Rwd {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Rwd {{ wdc: {=u8:?}, wdv: {=u8:?} }}", self.wdc(), self.wdv())
+            defmt::write!(
+                f,
+                "Rwd {{ wdc: {=u8:?}, wdv: {=u8:?} }}",
+                self.wdc(),
+                self.wdv()
+            )
         }
     }
     #[doc = "FDCAN Rx Buffer Configuration Register"]
@@ -2781,7 +2926,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Sidfc {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Sidfc {{ flssa: {=u16:?}, lss: {=u8:?} }}", self.flssa(), self.lss())
+            defmt::write!(
+                f,
+                "Sidfc {{ flssa: {=u16:?}, lss: {=u8:?} }}",
+                self.flssa(),
+                self.lss()
+            )
         }
     }
     #[doc = "FDCAN Transmitter Delay Compensation Register"]
@@ -2829,7 +2979,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Tdcr {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Tdcr {{ tdcf: {=u8:?}, tdco: {=u8:?} }}", self.tdcf(), self.tdco())
+            defmt::write!(
+                f,
+                "Tdcr {{ tdcf: {=u8:?}, tdco: {=u8:?} }}",
+                self.tdcf(),
+                self.tdco()
+            )
         }
     }
     #[doc = "FDCAN Test Register"]
@@ -3043,7 +3198,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Tscc {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Tscc {{ tss: {=u8:?}, tcp: {=u8:?} }}", self.tss(), self.tcp())
+            defmt::write!(
+                f,
+                "Tscc {{ tss: {=u8:?}, tcp: {=u8:?} }}",
+                self.tss(),
+                self.tcp()
+            )
         }
     }
     #[doc = "FDCAN Timestamp Counter Value Register"]
@@ -3125,7 +3285,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttcpt {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Ttcpt {{ ccv: {=u8:?}, swv: {=u16:?} }}", self.ccv(), self.swv())
+            defmt::write!(
+                f,
+                "Ttcpt {{ ccv: {=u8:?}, swv: {=u16:?} }}",
+                self.ccv(),
+                self.swv()
+            )
         }
     }
     #[doc = "FDCAN TT Cycle Sync Mark Register"]
@@ -3207,7 +3372,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttctc {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Ttctc {{ ct: {=u16:?}, cc: {=u8:?} }}", self.ct(), self.cc())
+            defmt::write!(
+                f,
+                "Ttctc {{ ct: {=u16:?}, cc: {=u8:?} }}",
+                self.ct(),
+                self.cc()
+            )
         }
     }
     #[doc = "FDCAN TT Global Time Preset Register"]
@@ -3255,7 +3425,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttgtp {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Ttgtp {{ ncl: {=u16:?}, ctp: {=u16:?} }}", self.ncl(), self.ctp())
+            defmt::write!(
+                f,
+                "Ttgtp {{ ncl: {=u16:?}, ctp: {=u16:?} }}",
+                self.ncl(),
+                self.ctp()
+            )
         }
     }
     #[doc = "FDCAN TT Interrupt Enable Register"]
@@ -3507,7 +3682,29 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttie {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ttie {{ sbce: {=bool:?}, smce: {=bool:?}, csme: {=bool:?}, soge: {=bool:?}, rtmie: {=bool:?}, ttmie: {=bool:?}, swee: {=bool:?}, gtwe: {=bool:?}, gtde: {=bool:?}, gtee: {=bool:?}, txue: {=bool:?}, txoe: {=bool:?}, se1e: {=bool:?}, se2e: {=bool:?}, elce: {=bool:?}, iwtge: {=bool:?}, wte: {=bool:?}, awe: {=bool:?}, cere: {=bool:?} }}" , self . sbce () , self . smce () , self . csme () , self . soge () , self . rtmie () , self . ttmie () , self . swee () , self . gtwe () , self . gtde () , self . gtee () , self . txue () , self . txoe () , self . se1e () , self . se2e () , self . elce () , self . iwtge () , self . wte () , self . awe () , self . cere ())
+            defmt::write!(
+                f,
+                "Ttie {{ sbce: {=bool:?}, smce: {=bool:?}, csme: {=bool:?}, soge: {=bool:?}, rtmie: {=bool:?}, ttmie: {=bool:?}, swee: {=bool:?}, gtwe: {=bool:?}, gtde: {=bool:?}, gtee: {=bool:?}, txue: {=bool:?}, txoe: {=bool:?}, se1e: {=bool:?}, se2e: {=bool:?}, elce: {=bool:?}, iwtge: {=bool:?}, wte: {=bool:?}, awe: {=bool:?}, cere: {=bool:?} }}",
+                self.sbce(),
+                self.smce(),
+                self.csme(),
+                self.soge(),
+                self.rtmie(),
+                self.ttmie(),
+                self.swee(),
+                self.gtwe(),
+                self.gtde(),
+                self.gtee(),
+                self.txue(),
+                self.txoe(),
+                self.se1e(),
+                self.se2e(),
+                self.elce(),
+                self.iwtge(),
+                self.wte(),
+                self.awe(),
+                self.cere()
+            )
         }
     }
     #[doc = "FDCAN TT Interrupt Line Select Register"]
@@ -3759,7 +3956,29 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttils {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ttils {{ sbcl: {=bool:?}, smcl: {=bool:?}, csml: {=bool:?}, sogl: {=bool:?}, rtmil: {=bool:?}, ttmil: {=bool:?}, swel: {=bool:?}, gtwl: {=bool:?}, gtdl: {=bool:?}, gtel: {=bool:?}, txul: {=bool:?}, txol: {=bool:?}, se1l: {=bool:?}, se2l: {=bool:?}, elcl: {=bool:?}, iwtgl: {=bool:?}, wtl: {=bool:?}, awl: {=bool:?}, cerl: {=bool:?} }}" , self . sbcl () , self . smcl () , self . csml () , self . sogl () , self . rtmil () , self . ttmil () , self . swel () , self . gtwl () , self . gtdl () , self . gtel () , self . txul () , self . txol () , self . se1l () , self . se2l () , self . elcl () , self . iwtgl () , self . wtl () , self . awl () , self . cerl ())
+            defmt::write!(
+                f,
+                "Ttils {{ sbcl: {=bool:?}, smcl: {=bool:?}, csml: {=bool:?}, sogl: {=bool:?}, rtmil: {=bool:?}, ttmil: {=bool:?}, swel: {=bool:?}, gtwl: {=bool:?}, gtdl: {=bool:?}, gtel: {=bool:?}, txul: {=bool:?}, txol: {=bool:?}, se1l: {=bool:?}, se2l: {=bool:?}, elcl: {=bool:?}, iwtgl: {=bool:?}, wtl: {=bool:?}, awl: {=bool:?}, cerl: {=bool:?} }}",
+                self.sbcl(),
+                self.smcl(),
+                self.csml(),
+                self.sogl(),
+                self.rtmil(),
+                self.ttmil(),
+                self.swel(),
+                self.gtwl(),
+                self.gtdl(),
+                self.gtel(),
+                self.txul(),
+                self.txol(),
+                self.se1l(),
+                self.se2l(),
+                self.elcl(),
+                self.iwtgl(),
+                self.wtl(),
+                self.awl(),
+                self.cerl()
+            )
         }
     }
     #[doc = "FDCAN TT Interrupt Register"]
@@ -4011,7 +4230,29 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttir {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ttir {{ sbc: {=bool:?}, smc: {=bool:?}, csm: {=bool:?}, sog: {=bool:?}, rtmi: {=bool:?}, ttmi: {=bool:?}, swe: {=bool:?}, gtw: {=bool:?}, gtd: {=bool:?}, gte: {=bool:?}, txu: {=bool:?}, txo: {=bool:?}, se1: {=bool:?}, se2: {=bool:?}, elc: {=bool:?}, iwtg: {=bool:?}, wt: {=bool:?}, aw: {=bool:?}, cer: {=bool:?} }}" , self . sbc () , self . smc () , self . csm () , self . sog () , self . rtmi () , self . ttmi () , self . swe () , self . gtw () , self . gtd () , self . gte () , self . txu () , self . txo () , self . se1 () , self . se2 () , self . elc () , self . iwtg () , self . wt () , self . aw () , self . cer ())
+            defmt::write!(
+                f,
+                "Ttir {{ sbc: {=bool:?}, smc: {=bool:?}, csm: {=bool:?}, sog: {=bool:?}, rtmi: {=bool:?}, ttmi: {=bool:?}, swe: {=bool:?}, gtw: {=bool:?}, gtd: {=bool:?}, gte: {=bool:?}, txu: {=bool:?}, txo: {=bool:?}, se1: {=bool:?}, se2: {=bool:?}, elc: {=bool:?}, iwtg: {=bool:?}, wt: {=bool:?}, aw: {=bool:?}, cer: {=bool:?} }}",
+                self.sbc(),
+                self.smc(),
+                self.csm(),
+                self.sog(),
+                self.rtmi(),
+                self.ttmi(),
+                self.swe(),
+                self.gtw(),
+                self.gtd(),
+                self.gte(),
+                self.txu(),
+                self.txo(),
+                self.se1(),
+                self.se2(),
+                self.elc(),
+                self.iwtg(),
+                self.wt(),
+                self.aw(),
+                self.cer()
+            )
         }
     }
     #[doc = "FDCAN TT Local and Global Time Register"]
@@ -4059,7 +4300,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttlgt {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Ttlgt {{ lt: {=u16:?}, gt: {=u16:?} }}", self.lt(), self.gt())
+            defmt::write!(
+                f,
+                "Ttlgt {{ lt: {=u16:?}, gt: {=u16:?} }}",
+                self.lt(),
+                self.gt()
+            )
         }
     }
     #[doc = "FDCAN TT Matrix Limits Register"]
@@ -4282,7 +4528,20 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttocf {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f, "Ttocf {{ om: {=u8:?}, gen: {=bool:?}, tm: {=bool:?}, ldsdl: {=u8:?}, irto: {=u8:?}, eecs: {=bool:?}, awl: {=u8:?}, egtf: {=bool:?}, ecc: {=bool:?}, evtp: {=bool:?} }}", self . om (), self . r#gen(), self . tm (), self . ldsdl (), self . irto (), self . eecs (), self . awl (), self . egtf (), self . ecc (), self . evtp ())
+            defmt::write!(
+                f,
+                "Ttocf {{ om: {=u8:?}, gen: {=bool:?}, tm: {=bool:?}, ldsdl: {=u8:?}, irto: {=u8:?}, eecs: {=bool:?}, awl: {=u8:?}, egtf: {=bool:?}, ecc: {=bool:?}, evtp: {=bool:?} }}",
+                self.om(),
+                self.r#gen(),
+                self.tm(),
+                self.ldsdl(),
+                self.irto(),
+                self.eecs(),
+                self.awl(),
+                self.egtf(),
+                self.ecc(),
+                self.evtp()
+            )
         }
     }
     #[doc = "FDCAN TT Operation Control Register"]
@@ -4462,7 +4721,23 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttocn {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ttocn {{ sgt: {=bool:?}, ecs: {=bool:?}, swp: {=bool:?}, sws: {=u8:?}, rtie: {=bool:?}, tmc: {=u8:?}, ttie: {=bool:?}, gcs: {=bool:?}, fgp: {=bool:?}, tmg: {=bool:?}, nig: {=bool:?}, escn: {=bool:?}, lckc: {=bool:?} }}" , self . sgt () , self . ecs () , self . swp () , self . sws () , self . rtie () , self . tmc () , self . ttie () , self . gcs () , self . fgp () , self . tmg () , self . nig () , self . escn () , self . lckc ())
+            defmt::write!(
+                f,
+                "Ttocn {{ sgt: {=bool:?}, ecs: {=bool:?}, swp: {=bool:?}, sws: {=u8:?}, rtie: {=bool:?}, tmc: {=u8:?}, ttie: {=bool:?}, gcs: {=bool:?}, fgp: {=bool:?}, tmg: {=bool:?}, nig: {=bool:?}, escn: {=bool:?}, lckc: {=bool:?} }}",
+                self.sgt(),
+                self.ecs(),
+                self.swp(),
+                self.sws(),
+                self.rtie(),
+                self.tmc(),
+                self.ttie(),
+                self.gcs(),
+                self.fgp(),
+                self.tmg(),
+                self.nig(),
+                self.escn(),
+                self.lckc()
+            )
         }
     }
     #[doc = "FDCAN TT Operation Status Register"]
@@ -4654,7 +4929,24 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Ttost {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Ttost {{ el: {=u8:?}, ms: {=u8:?}, sys: {=u8:?}, qgtp: {=bool:?}, qcs: {=bool:?}, rto: {=u8:?}, wgtd: {=bool:?}, gfi: {=bool:?}, tmp: {=u8:?}, gsi: {=bool:?}, wfe: {=bool:?}, awe: {=bool:?}, wecs: {=bool:?}, spl: {=bool:?} }}" , self . el () , self . ms () , self . sys () , self . qgtp () , self . qcs () , self . rto () , self . wgtd () , self . gfi () , self . tmp () , self . gsi () , self . wfe () , self . awe () , self . wecs () , self . spl ())
+            defmt::write!(
+                f,
+                "Ttost {{ el: {=u8:?}, ms: {=u8:?}, sys: {=u8:?}, qgtp: {=bool:?}, qcs: {=bool:?}, rto: {=u8:?}, wgtd: {=bool:?}, gfi: {=bool:?}, tmp: {=u8:?}, gsi: {=bool:?}, wfe: {=bool:?}, awe: {=bool:?}, wecs: {=bool:?}, spl: {=bool:?} }}",
+                self.el(),
+                self.ms(),
+                self.sys(),
+                self.qgtp(),
+                self.qcs(),
+                self.rto(),
+                self.wgtd(),
+                self.gfi(),
+                self.tmp(),
+                self.gsi(),
+                self.wfe(),
+                self.awe(),
+                self.wecs(),
+                self.spl()
+            )
         }
     }
     #[doc = "FDCAN TT Reference Message Configuration Register"]
@@ -4768,7 +5060,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Tttmc {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Tttmc {{ tmsa: {=u16:?}, tme: {=u8:?} }}", self.tmsa(), self.tme())
+            defmt::write!(
+                f,
+                "Tttmc {{ tmsa: {=u16:?}, tme: {=u8:?} }}",
+                self.tmsa(),
+                self.tme()
+            )
         }
     }
     #[doc = "FDCAN TT Time Mark Register"]
@@ -5058,7 +5355,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbar {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbar {{ ar[0]: {=bool:?}, ar[1]: {=bool:?}, ar[2]: {=bool:?}, ar[3]: {=bool:?}, ar[4]: {=bool:?}, ar[5]: {=bool:?}, ar[6]: {=bool:?}, ar[7]: {=bool:?}, ar[8]: {=bool:?}, ar[9]: {=bool:?}, ar[10]: {=bool:?}, ar[11]: {=bool:?}, ar[12]: {=bool:?}, ar[13]: {=bool:?}, ar[14]: {=bool:?}, ar[15]: {=bool:?}, ar[16]: {=bool:?}, ar[17]: {=bool:?}, ar[18]: {=bool:?}, ar[19]: {=bool:?}, ar[20]: {=bool:?}, ar[21]: {=bool:?}, ar[22]: {=bool:?}, ar[23]: {=bool:?}, ar[24]: {=bool:?}, ar[25]: {=bool:?}, ar[26]: {=bool:?}, ar[27]: {=bool:?}, ar[28]: {=bool:?}, ar[29]: {=bool:?}, ar[30]: {=bool:?}, ar[31]: {=bool:?} }}" , self . ar (0usize) , self . ar (1usize) , self . ar (2usize) , self . ar (3usize) , self . ar (4usize) , self . ar (5usize) , self . ar (6usize) , self . ar (7usize) , self . ar (8usize) , self . ar (9usize) , self . ar (10usize) , self . ar (11usize) , self . ar (12usize) , self . ar (13usize) , self . ar (14usize) , self . ar (15usize) , self . ar (16usize) , self . ar (17usize) , self . ar (18usize) , self . ar (19usize) , self . ar (20usize) , self . ar (21usize) , self . ar (22usize) , self . ar (23usize) , self . ar (24usize) , self . ar (25usize) , self . ar (26usize) , self . ar (27usize) , self . ar (28usize) , self . ar (29usize) , self . ar (30usize) , self . ar (31usize))
+            defmt::write!(
+                f,
+                "Txbar {{ ar[0]: {=bool:?}, ar[1]: {=bool:?}, ar[2]: {=bool:?}, ar[3]: {=bool:?}, ar[4]: {=bool:?}, ar[5]: {=bool:?}, ar[6]: {=bool:?}, ar[7]: {=bool:?}, ar[8]: {=bool:?}, ar[9]: {=bool:?}, ar[10]: {=bool:?}, ar[11]: {=bool:?}, ar[12]: {=bool:?}, ar[13]: {=bool:?}, ar[14]: {=bool:?}, ar[15]: {=bool:?}, ar[16]: {=bool:?}, ar[17]: {=bool:?}, ar[18]: {=bool:?}, ar[19]: {=bool:?}, ar[20]: {=bool:?}, ar[21]: {=bool:?}, ar[22]: {=bool:?}, ar[23]: {=bool:?}, ar[24]: {=bool:?}, ar[25]: {=bool:?}, ar[26]: {=bool:?}, ar[27]: {=bool:?}, ar[28]: {=bool:?}, ar[29]: {=bool:?}, ar[30]: {=bool:?}, ar[31]: {=bool:?} }}",
+                self.ar(0usize),
+                self.ar(1usize),
+                self.ar(2usize),
+                self.ar(3usize),
+                self.ar(4usize),
+                self.ar(5usize),
+                self.ar(6usize),
+                self.ar(7usize),
+                self.ar(8usize),
+                self.ar(9usize),
+                self.ar(10usize),
+                self.ar(11usize),
+                self.ar(12usize),
+                self.ar(13usize),
+                self.ar(14usize),
+                self.ar(15usize),
+                self.ar(16usize),
+                self.ar(17usize),
+                self.ar(18usize),
+                self.ar(19usize),
+                self.ar(20usize),
+                self.ar(21usize),
+                self.ar(22usize),
+                self.ar(23usize),
+                self.ar(24usize),
+                self.ar(25usize),
+                self.ar(26usize),
+                self.ar(27usize),
+                self.ar(28usize),
+                self.ar(29usize),
+                self.ar(30usize),
+                self.ar(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Buffer Configuration Register"]
@@ -5208,7 +5540,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbcf {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbcf {{ cf[0]: {=bool:?}, cf[1]: {=bool:?}, cf[2]: {=bool:?}, cf[3]: {=bool:?}, cf[4]: {=bool:?}, cf[5]: {=bool:?}, cf[6]: {=bool:?}, cf[7]: {=bool:?}, cf[8]: {=bool:?}, cf[9]: {=bool:?}, cf[10]: {=bool:?}, cf[11]: {=bool:?}, cf[12]: {=bool:?}, cf[13]: {=bool:?}, cf[14]: {=bool:?}, cf[15]: {=bool:?}, cf[16]: {=bool:?}, cf[17]: {=bool:?}, cf[18]: {=bool:?}, cf[19]: {=bool:?}, cf[20]: {=bool:?}, cf[21]: {=bool:?}, cf[22]: {=bool:?}, cf[23]: {=bool:?}, cf[24]: {=bool:?}, cf[25]: {=bool:?}, cf[26]: {=bool:?}, cf[27]: {=bool:?}, cf[28]: {=bool:?}, cf[29]: {=bool:?}, cf[30]: {=bool:?}, cf[31]: {=bool:?} }}" , self . cf (0usize) , self . cf (1usize) , self . cf (2usize) , self . cf (3usize) , self . cf (4usize) , self . cf (5usize) , self . cf (6usize) , self . cf (7usize) , self . cf (8usize) , self . cf (9usize) , self . cf (10usize) , self . cf (11usize) , self . cf (12usize) , self . cf (13usize) , self . cf (14usize) , self . cf (15usize) , self . cf (16usize) , self . cf (17usize) , self . cf (18usize) , self . cf (19usize) , self . cf (20usize) , self . cf (21usize) , self . cf (22usize) , self . cf (23usize) , self . cf (24usize) , self . cf (25usize) , self . cf (26usize) , self . cf (27usize) , self . cf (28usize) , self . cf (29usize) , self . cf (30usize) , self . cf (31usize))
+            defmt::write!(
+                f,
+                "Txbcf {{ cf[0]: {=bool:?}, cf[1]: {=bool:?}, cf[2]: {=bool:?}, cf[3]: {=bool:?}, cf[4]: {=bool:?}, cf[5]: {=bool:?}, cf[6]: {=bool:?}, cf[7]: {=bool:?}, cf[8]: {=bool:?}, cf[9]: {=bool:?}, cf[10]: {=bool:?}, cf[11]: {=bool:?}, cf[12]: {=bool:?}, cf[13]: {=bool:?}, cf[14]: {=bool:?}, cf[15]: {=bool:?}, cf[16]: {=bool:?}, cf[17]: {=bool:?}, cf[18]: {=bool:?}, cf[19]: {=bool:?}, cf[20]: {=bool:?}, cf[21]: {=bool:?}, cf[22]: {=bool:?}, cf[23]: {=bool:?}, cf[24]: {=bool:?}, cf[25]: {=bool:?}, cf[26]: {=bool:?}, cf[27]: {=bool:?}, cf[28]: {=bool:?}, cf[29]: {=bool:?}, cf[30]: {=bool:?}, cf[31]: {=bool:?} }}",
+                self.cf(0usize),
+                self.cf(1usize),
+                self.cf(2usize),
+                self.cf(3usize),
+                self.cf(4usize),
+                self.cf(5usize),
+                self.cf(6usize),
+                self.cf(7usize),
+                self.cf(8usize),
+                self.cf(9usize),
+                self.cf(10usize),
+                self.cf(11usize),
+                self.cf(12usize),
+                self.cf(13usize),
+                self.cf(14usize),
+                self.cf(15usize),
+                self.cf(16usize),
+                self.cf(17usize),
+                self.cf(18usize),
+                self.cf(19usize),
+                self.cf(20usize),
+                self.cf(21usize),
+                self.cf(22usize),
+                self.cf(23usize),
+                self.cf(24usize),
+                self.cf(25usize),
+                self.cf(26usize),
+                self.cf(27usize),
+                self.cf(28usize),
+                self.cf(29usize),
+                self.cf(30usize),
+                self.cf(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Buffer Cancellation Finished Interrupt Enable Register"]
@@ -5279,7 +5646,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbcie {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbcie {{ cf[0]: {=bool:?}, cf[1]: {=bool:?}, cf[2]: {=bool:?}, cf[3]: {=bool:?}, cf[4]: {=bool:?}, cf[5]: {=bool:?}, cf[6]: {=bool:?}, cf[7]: {=bool:?}, cf[8]: {=bool:?}, cf[9]: {=bool:?}, cf[10]: {=bool:?}, cf[11]: {=bool:?}, cf[12]: {=bool:?}, cf[13]: {=bool:?}, cf[14]: {=bool:?}, cf[15]: {=bool:?}, cf[16]: {=bool:?}, cf[17]: {=bool:?}, cf[18]: {=bool:?}, cf[19]: {=bool:?}, cf[20]: {=bool:?}, cf[21]: {=bool:?}, cf[22]: {=bool:?}, cf[23]: {=bool:?}, cf[24]: {=bool:?}, cf[25]: {=bool:?}, cf[26]: {=bool:?}, cf[27]: {=bool:?}, cf[28]: {=bool:?}, cf[29]: {=bool:?}, cf[30]: {=bool:?}, cf[31]: {=bool:?} }}" , self . cf (0usize) , self . cf (1usize) , self . cf (2usize) , self . cf (3usize) , self . cf (4usize) , self . cf (5usize) , self . cf (6usize) , self . cf (7usize) , self . cf (8usize) , self . cf (9usize) , self . cf (10usize) , self . cf (11usize) , self . cf (12usize) , self . cf (13usize) , self . cf (14usize) , self . cf (15usize) , self . cf (16usize) , self . cf (17usize) , self . cf (18usize) , self . cf (19usize) , self . cf (20usize) , self . cf (21usize) , self . cf (22usize) , self . cf (23usize) , self . cf (24usize) , self . cf (25usize) , self . cf (26usize) , self . cf (27usize) , self . cf (28usize) , self . cf (29usize) , self . cf (30usize) , self . cf (31usize))
+            defmt::write!(
+                f,
+                "Txbcie {{ cf[0]: {=bool:?}, cf[1]: {=bool:?}, cf[2]: {=bool:?}, cf[3]: {=bool:?}, cf[4]: {=bool:?}, cf[5]: {=bool:?}, cf[6]: {=bool:?}, cf[7]: {=bool:?}, cf[8]: {=bool:?}, cf[9]: {=bool:?}, cf[10]: {=bool:?}, cf[11]: {=bool:?}, cf[12]: {=bool:?}, cf[13]: {=bool:?}, cf[14]: {=bool:?}, cf[15]: {=bool:?}, cf[16]: {=bool:?}, cf[17]: {=bool:?}, cf[18]: {=bool:?}, cf[19]: {=bool:?}, cf[20]: {=bool:?}, cf[21]: {=bool:?}, cf[22]: {=bool:?}, cf[23]: {=bool:?}, cf[24]: {=bool:?}, cf[25]: {=bool:?}, cf[26]: {=bool:?}, cf[27]: {=bool:?}, cf[28]: {=bool:?}, cf[29]: {=bool:?}, cf[30]: {=bool:?}, cf[31]: {=bool:?} }}",
+                self.cf(0usize),
+                self.cf(1usize),
+                self.cf(2usize),
+                self.cf(3usize),
+                self.cf(4usize),
+                self.cf(5usize),
+                self.cf(6usize),
+                self.cf(7usize),
+                self.cf(8usize),
+                self.cf(9usize),
+                self.cf(10usize),
+                self.cf(11usize),
+                self.cf(12usize),
+                self.cf(13usize),
+                self.cf(14usize),
+                self.cf(15usize),
+                self.cf(16usize),
+                self.cf(17usize),
+                self.cf(18usize),
+                self.cf(19usize),
+                self.cf(20usize),
+                self.cf(21usize),
+                self.cf(22usize),
+                self.cf(23usize),
+                self.cf(24usize),
+                self.cf(25usize),
+                self.cf(26usize),
+                self.cf(27usize),
+                self.cf(28usize),
+                self.cf(29usize),
+                self.cf(30usize),
+                self.cf(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Buffer Cancellation Request Register"]
@@ -5350,7 +5752,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbcr {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbcr {{ cr[0]: {=bool:?}, cr[1]: {=bool:?}, cr[2]: {=bool:?}, cr[3]: {=bool:?}, cr[4]: {=bool:?}, cr[5]: {=bool:?}, cr[6]: {=bool:?}, cr[7]: {=bool:?}, cr[8]: {=bool:?}, cr[9]: {=bool:?}, cr[10]: {=bool:?}, cr[11]: {=bool:?}, cr[12]: {=bool:?}, cr[13]: {=bool:?}, cr[14]: {=bool:?}, cr[15]: {=bool:?}, cr[16]: {=bool:?}, cr[17]: {=bool:?}, cr[18]: {=bool:?}, cr[19]: {=bool:?}, cr[20]: {=bool:?}, cr[21]: {=bool:?}, cr[22]: {=bool:?}, cr[23]: {=bool:?}, cr[24]: {=bool:?}, cr[25]: {=bool:?}, cr[26]: {=bool:?}, cr[27]: {=bool:?}, cr[28]: {=bool:?}, cr[29]: {=bool:?}, cr[30]: {=bool:?}, cr[31]: {=bool:?} }}" , self . cr (0usize) , self . cr (1usize) , self . cr (2usize) , self . cr (3usize) , self . cr (4usize) , self . cr (5usize) , self . cr (6usize) , self . cr (7usize) , self . cr (8usize) , self . cr (9usize) , self . cr (10usize) , self . cr (11usize) , self . cr (12usize) , self . cr (13usize) , self . cr (14usize) , self . cr (15usize) , self . cr (16usize) , self . cr (17usize) , self . cr (18usize) , self . cr (19usize) , self . cr (20usize) , self . cr (21usize) , self . cr (22usize) , self . cr (23usize) , self . cr (24usize) , self . cr (25usize) , self . cr (26usize) , self . cr (27usize) , self . cr (28usize) , self . cr (29usize) , self . cr (30usize) , self . cr (31usize))
+            defmt::write!(
+                f,
+                "Txbcr {{ cr[0]: {=bool:?}, cr[1]: {=bool:?}, cr[2]: {=bool:?}, cr[3]: {=bool:?}, cr[4]: {=bool:?}, cr[5]: {=bool:?}, cr[6]: {=bool:?}, cr[7]: {=bool:?}, cr[8]: {=bool:?}, cr[9]: {=bool:?}, cr[10]: {=bool:?}, cr[11]: {=bool:?}, cr[12]: {=bool:?}, cr[13]: {=bool:?}, cr[14]: {=bool:?}, cr[15]: {=bool:?}, cr[16]: {=bool:?}, cr[17]: {=bool:?}, cr[18]: {=bool:?}, cr[19]: {=bool:?}, cr[20]: {=bool:?}, cr[21]: {=bool:?}, cr[22]: {=bool:?}, cr[23]: {=bool:?}, cr[24]: {=bool:?}, cr[25]: {=bool:?}, cr[26]: {=bool:?}, cr[27]: {=bool:?}, cr[28]: {=bool:?}, cr[29]: {=bool:?}, cr[30]: {=bool:?}, cr[31]: {=bool:?} }}",
+                self.cr(0usize),
+                self.cr(1usize),
+                self.cr(2usize),
+                self.cr(3usize),
+                self.cr(4usize),
+                self.cr(5usize),
+                self.cr(6usize),
+                self.cr(7usize),
+                self.cr(8usize),
+                self.cr(9usize),
+                self.cr(10usize),
+                self.cr(11usize),
+                self.cr(12usize),
+                self.cr(13usize),
+                self.cr(14usize),
+                self.cr(15usize),
+                self.cr(16usize),
+                self.cr(17usize),
+                self.cr(18usize),
+                self.cr(19usize),
+                self.cr(20usize),
+                self.cr(21usize),
+                self.cr(22usize),
+                self.cr(23usize),
+                self.cr(24usize),
+                self.cr(25usize),
+                self.cr(26usize),
+                self.cr(27usize),
+                self.cr(28usize),
+                self.cr(29usize),
+                self.cr(30usize),
+                self.cr(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Buffer Request Pending Register"]
@@ -5421,7 +5858,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbrp {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbrp {{ trp[0]: {=bool:?}, trp[1]: {=bool:?}, trp[2]: {=bool:?}, trp[3]: {=bool:?}, trp[4]: {=bool:?}, trp[5]: {=bool:?}, trp[6]: {=bool:?}, trp[7]: {=bool:?}, trp[8]: {=bool:?}, trp[9]: {=bool:?}, trp[10]: {=bool:?}, trp[11]: {=bool:?}, trp[12]: {=bool:?}, trp[13]: {=bool:?}, trp[14]: {=bool:?}, trp[15]: {=bool:?}, trp[16]: {=bool:?}, trp[17]: {=bool:?}, trp[18]: {=bool:?}, trp[19]: {=bool:?}, trp[20]: {=bool:?}, trp[21]: {=bool:?}, trp[22]: {=bool:?}, trp[23]: {=bool:?}, trp[24]: {=bool:?}, trp[25]: {=bool:?}, trp[26]: {=bool:?}, trp[27]: {=bool:?}, trp[28]: {=bool:?}, trp[29]: {=bool:?}, trp[30]: {=bool:?}, trp[31]: {=bool:?} }}" , self . trp (0usize) , self . trp (1usize) , self . trp (2usize) , self . trp (3usize) , self . trp (4usize) , self . trp (5usize) , self . trp (6usize) , self . trp (7usize) , self . trp (8usize) , self . trp (9usize) , self . trp (10usize) , self . trp (11usize) , self . trp (12usize) , self . trp (13usize) , self . trp (14usize) , self . trp (15usize) , self . trp (16usize) , self . trp (17usize) , self . trp (18usize) , self . trp (19usize) , self . trp (20usize) , self . trp (21usize) , self . trp (22usize) , self . trp (23usize) , self . trp (24usize) , self . trp (25usize) , self . trp (26usize) , self . trp (27usize) , self . trp (28usize) , self . trp (29usize) , self . trp (30usize) , self . trp (31usize))
+            defmt::write!(
+                f,
+                "Txbrp {{ trp[0]: {=bool:?}, trp[1]: {=bool:?}, trp[2]: {=bool:?}, trp[3]: {=bool:?}, trp[4]: {=bool:?}, trp[5]: {=bool:?}, trp[6]: {=bool:?}, trp[7]: {=bool:?}, trp[8]: {=bool:?}, trp[9]: {=bool:?}, trp[10]: {=bool:?}, trp[11]: {=bool:?}, trp[12]: {=bool:?}, trp[13]: {=bool:?}, trp[14]: {=bool:?}, trp[15]: {=bool:?}, trp[16]: {=bool:?}, trp[17]: {=bool:?}, trp[18]: {=bool:?}, trp[19]: {=bool:?}, trp[20]: {=bool:?}, trp[21]: {=bool:?}, trp[22]: {=bool:?}, trp[23]: {=bool:?}, trp[24]: {=bool:?}, trp[25]: {=bool:?}, trp[26]: {=bool:?}, trp[27]: {=bool:?}, trp[28]: {=bool:?}, trp[29]: {=bool:?}, trp[30]: {=bool:?}, trp[31]: {=bool:?} }}",
+                self.trp(0usize),
+                self.trp(1usize),
+                self.trp(2usize),
+                self.trp(3usize),
+                self.trp(4usize),
+                self.trp(5usize),
+                self.trp(6usize),
+                self.trp(7usize),
+                self.trp(8usize),
+                self.trp(9usize),
+                self.trp(10usize),
+                self.trp(11usize),
+                self.trp(12usize),
+                self.trp(13usize),
+                self.trp(14usize),
+                self.trp(15usize),
+                self.trp(16usize),
+                self.trp(17usize),
+                self.trp(18usize),
+                self.trp(19usize),
+                self.trp(20usize),
+                self.trp(21usize),
+                self.trp(22usize),
+                self.trp(23usize),
+                self.trp(24usize),
+                self.trp(25usize),
+                self.trp(26usize),
+                self.trp(27usize),
+                self.trp(28usize),
+                self.trp(29usize),
+                self.trp(30usize),
+                self.trp(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Buffer Transmission Interrupt Enable Register"]
@@ -5492,7 +5964,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbtie {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbtie {{ tie[0]: {=bool:?}, tie[1]: {=bool:?}, tie[2]: {=bool:?}, tie[3]: {=bool:?}, tie[4]: {=bool:?}, tie[5]: {=bool:?}, tie[6]: {=bool:?}, tie[7]: {=bool:?}, tie[8]: {=bool:?}, tie[9]: {=bool:?}, tie[10]: {=bool:?}, tie[11]: {=bool:?}, tie[12]: {=bool:?}, tie[13]: {=bool:?}, tie[14]: {=bool:?}, tie[15]: {=bool:?}, tie[16]: {=bool:?}, tie[17]: {=bool:?}, tie[18]: {=bool:?}, tie[19]: {=bool:?}, tie[20]: {=bool:?}, tie[21]: {=bool:?}, tie[22]: {=bool:?}, tie[23]: {=bool:?}, tie[24]: {=bool:?}, tie[25]: {=bool:?}, tie[26]: {=bool:?}, tie[27]: {=bool:?}, tie[28]: {=bool:?}, tie[29]: {=bool:?}, tie[30]: {=bool:?}, tie[31]: {=bool:?} }}" , self . tie (0usize) , self . tie (1usize) , self . tie (2usize) , self . tie (3usize) , self . tie (4usize) , self . tie (5usize) , self . tie (6usize) , self . tie (7usize) , self . tie (8usize) , self . tie (9usize) , self . tie (10usize) , self . tie (11usize) , self . tie (12usize) , self . tie (13usize) , self . tie (14usize) , self . tie (15usize) , self . tie (16usize) , self . tie (17usize) , self . tie (18usize) , self . tie (19usize) , self . tie (20usize) , self . tie (21usize) , self . tie (22usize) , self . tie (23usize) , self . tie (24usize) , self . tie (25usize) , self . tie (26usize) , self . tie (27usize) , self . tie (28usize) , self . tie (29usize) , self . tie (30usize) , self . tie (31usize))
+            defmt::write!(
+                f,
+                "Txbtie {{ tie[0]: {=bool:?}, tie[1]: {=bool:?}, tie[2]: {=bool:?}, tie[3]: {=bool:?}, tie[4]: {=bool:?}, tie[5]: {=bool:?}, tie[6]: {=bool:?}, tie[7]: {=bool:?}, tie[8]: {=bool:?}, tie[9]: {=bool:?}, tie[10]: {=bool:?}, tie[11]: {=bool:?}, tie[12]: {=bool:?}, tie[13]: {=bool:?}, tie[14]: {=bool:?}, tie[15]: {=bool:?}, tie[16]: {=bool:?}, tie[17]: {=bool:?}, tie[18]: {=bool:?}, tie[19]: {=bool:?}, tie[20]: {=bool:?}, tie[21]: {=bool:?}, tie[22]: {=bool:?}, tie[23]: {=bool:?}, tie[24]: {=bool:?}, tie[25]: {=bool:?}, tie[26]: {=bool:?}, tie[27]: {=bool:?}, tie[28]: {=bool:?}, tie[29]: {=bool:?}, tie[30]: {=bool:?}, tie[31]: {=bool:?} }}",
+                self.tie(0usize),
+                self.tie(1usize),
+                self.tie(2usize),
+                self.tie(3usize),
+                self.tie(4usize),
+                self.tie(5usize),
+                self.tie(6usize),
+                self.tie(7usize),
+                self.tie(8usize),
+                self.tie(9usize),
+                self.tie(10usize),
+                self.tie(11usize),
+                self.tie(12usize),
+                self.tie(13usize),
+                self.tie(14usize),
+                self.tie(15usize),
+                self.tie(16usize),
+                self.tie(17usize),
+                self.tie(18usize),
+                self.tie(19usize),
+                self.tie(20usize),
+                self.tie(21usize),
+                self.tie(22usize),
+                self.tie(23usize),
+                self.tie(24usize),
+                self.tie(25usize),
+                self.tie(26usize),
+                self.tie(27usize),
+                self.tie(28usize),
+                self.tie(29usize),
+                self.tie(30usize),
+                self.tie(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Buffer Transmission Occurred Register"]
@@ -5563,7 +6070,42 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Txbto {
         fn format(&self, f: defmt::Formatter) {
-            defmt :: write ! (f , "Txbto {{ to[0]: {=bool:?}, to[1]: {=bool:?}, to[2]: {=bool:?}, to[3]: {=bool:?}, to[4]: {=bool:?}, to[5]: {=bool:?}, to[6]: {=bool:?}, to[7]: {=bool:?}, to[8]: {=bool:?}, to[9]: {=bool:?}, to[10]: {=bool:?}, to[11]: {=bool:?}, to[12]: {=bool:?}, to[13]: {=bool:?}, to[14]: {=bool:?}, to[15]: {=bool:?}, to[16]: {=bool:?}, to[17]: {=bool:?}, to[18]: {=bool:?}, to[19]: {=bool:?}, to[20]: {=bool:?}, to[21]: {=bool:?}, to[22]: {=bool:?}, to[23]: {=bool:?}, to[24]: {=bool:?}, to[25]: {=bool:?}, to[26]: {=bool:?}, to[27]: {=bool:?}, to[28]: {=bool:?}, to[29]: {=bool:?}, to[30]: {=bool:?}, to[31]: {=bool:?} }}" , self . to (0usize) , self . to (1usize) , self . to (2usize) , self . to (3usize) , self . to (4usize) , self . to (5usize) , self . to (6usize) , self . to (7usize) , self . to (8usize) , self . to (9usize) , self . to (10usize) , self . to (11usize) , self . to (12usize) , self . to (13usize) , self . to (14usize) , self . to (15usize) , self . to (16usize) , self . to (17usize) , self . to (18usize) , self . to (19usize) , self . to (20usize) , self . to (21usize) , self . to (22usize) , self . to (23usize) , self . to (24usize) , self . to (25usize) , self . to (26usize) , self . to (27usize) , self . to (28usize) , self . to (29usize) , self . to (30usize) , self . to (31usize))
+            defmt::write!(
+                f,
+                "Txbto {{ to[0]: {=bool:?}, to[1]: {=bool:?}, to[2]: {=bool:?}, to[3]: {=bool:?}, to[4]: {=bool:?}, to[5]: {=bool:?}, to[6]: {=bool:?}, to[7]: {=bool:?}, to[8]: {=bool:?}, to[9]: {=bool:?}, to[10]: {=bool:?}, to[11]: {=bool:?}, to[12]: {=bool:?}, to[13]: {=bool:?}, to[14]: {=bool:?}, to[15]: {=bool:?}, to[16]: {=bool:?}, to[17]: {=bool:?}, to[18]: {=bool:?}, to[19]: {=bool:?}, to[20]: {=bool:?}, to[21]: {=bool:?}, to[22]: {=bool:?}, to[23]: {=bool:?}, to[24]: {=bool:?}, to[25]: {=bool:?}, to[26]: {=bool:?}, to[27]: {=bool:?}, to[28]: {=bool:?}, to[29]: {=bool:?}, to[30]: {=bool:?}, to[31]: {=bool:?} }}",
+                self.to(0usize),
+                self.to(1usize),
+                self.to(2usize),
+                self.to(3usize),
+                self.to(4usize),
+                self.to(5usize),
+                self.to(6usize),
+                self.to(7usize),
+                self.to(8usize),
+                self.to(9usize),
+                self.to(10usize),
+                self.to(11usize),
+                self.to(12usize),
+                self.to(13usize),
+                self.to(14usize),
+                self.to(15usize),
+                self.to(16usize),
+                self.to(17usize),
+                self.to(18usize),
+                self.to(19usize),
+                self.to(20usize),
+                self.to(21usize),
+                self.to(22usize),
+                self.to(23usize),
+                self.to(24usize),
+                self.to(25usize),
+                self.to(26usize),
+                self.to(27usize),
+                self.to(28usize),
+                self.to(29usize),
+                self.to(30usize),
+                self.to(31usize)
+            )
         }
     }
     #[doc = "FDCAN Tx Event FIFO Acknowledge Register"]
@@ -5950,7 +6492,12 @@ pub mod regs {
     #[cfg(feature = "defmt")]
     impl defmt::Format for Xidfc {
         fn format(&self, f: defmt::Formatter) {
-            defmt::write!(f, "Xidfc {{ flesa: {=u16:?}, lse: {=u8:?} }}", self.flesa(), self.lse())
+            defmt::write!(
+                f,
+                "Xidfc {{ flesa: {=u16:?}, lse: {=u8:?} }}",
+                self.flesa(),
+                self.lse()
+            )
         }
     }
 }

@@ -20,7 +20,7 @@ pub struct MessageRamLayout {
     pub(crate) rx_fifo1_data_size: DataFieldSize,
 
     pub(crate) rx_buffers_addr: u16,
-    /// Not actually used, as 3 is implied, just to keep code clean
+    /// Only start address is used by the core, but len is used for bounds checks
     pub(crate) rx_buffers_len: u8,
     pub(crate) rx_buffers_data_size: DataFieldSize,
 
@@ -95,6 +95,7 @@ impl MessageRamLayout {
 // The builder states below. Builder will go through these states in order for consistency and
 // simplicity, though MCAN itself does not impose a particular order of various blocks.
 pub struct ElevenBitFilters;
+pub type RamBuilderInitialState = ElevenBitFilters;
 pub struct TwentyNineBitFilters;
 pub struct RxFifo0;
 pub struct RxFifo1;
@@ -178,7 +179,7 @@ impl MessageRamBuilder<ElevenBitFilters> {
     }
 
     /// Merge this builder with the other. Useful if doing full re-init and re-layout of multiple CAN instances.
-    pub fn recombine(&mut self, other: MessageRamBuilder<ElevenBitFilters>) {
+    pub fn recombine(&mut self, _other: MessageRamBuilder<ElevenBitFilters>) {
         todo!()
     }
 }
@@ -223,6 +224,11 @@ impl MessageRamBuilder<RxFifo0> {
     }
 }
 
+#[cfg(feature = "h7")]
+type RxFifo1NextState = RxBuffers;
+#[cfg(feature = "g0")]
+type RxFifo1NextState = TxEventFifo;
+
 impl MessageRamBuilder<RxFifo1> {
     #[cfg(feature = "g0")]
     const MAX_ELEMENTS: u8 = 3;
@@ -234,7 +240,7 @@ impl MessageRamBuilder<RxFifo1> {
         mut self,
         len: u8,
         data_size: DataFieldSize,
-    ) -> Result<MessageRamBuilder<RxBuffers>, MessageRamBuilderError> {
+    ) -> Result<MessageRamBuilder<RxFifo1NextState>, MessageRamBuilderError> {
         check_and_advance!(
             self,
             Self::MAX_ELEMENTS,
@@ -247,21 +253,20 @@ impl MessageRamBuilder<RxFifo1> {
     }
 }
 
+#[cfg(feature = "h7")]
 impl MessageRamBuilder<RxBuffers> {
-    #[cfg(feature = "g0")]
-    const MAX_ELEMENTS: u8 = 3;
-    #[cfg(feature = "h7")]
     const MAX_ELEMENTS: u8 = 64;
 
-    /// Allocate space for 3 messages (debug messages A, B and C) and move to the next step.
+    /// Allocate dedicated RX buffers space and move to the next step.
     pub fn allocate_rx_buffers(
         mut self,
+        len: u8,
         data_size: DataFieldSize,
     ) -> Result<MessageRamBuilder<TxEventFifo>, MessageRamBuilderError> {
         check_and_advance!(
             self,
             Self::MAX_ELEMENTS,
-            3,
+            len,
             2 + data_size.words(),
             rx_buffers
         );
