@@ -172,7 +172,7 @@ impl StandardFilterConfiguration {
 /// Tx Buffer configuration TXBC. TFQS and TXBC.NDTB. The element size can be configured for storage of
 /// CAN FD messages with up to 64  bytes data field via register TXESC.
 #[bitfield(u32, order = Msb, default = false, debug = false, defmt = cfg(feature = "defmt"))]
-pub struct TxBufferElementT0 {
+pub(crate) struct TxBufferElementT0 {
     /// Error State Indicator
     ///
     /// The ESI bit of the transmit buffer is or’ed with the error passive flag to decide the value
@@ -203,7 +203,7 @@ enum_bit!(ExtendedIdentifier, ElevenBits, TwentyNineBits);
 enum_bit!(Rtr, TransmitDataFrame, TransmitRemoteFrame);
 
 #[bitfield(u32, order = Msb, default = false, debug = false, defmt = cfg(feature = "defmt"))]
-pub struct TxBufferElementT1 {
+pub(crate) struct TxBufferElementT1 {
     /// Written by CPU during Tx Buffer configuration. Copied into Tx Event FIFO element for identification
     /// of Tx message status.
     #[bits(8)]

@@ -1,6 +1,6 @@
 use crate::fdcan::Error;
 use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
-use crate::message_ram::MessageRamLayout;
+use crate::message_ram_layout::MessageRamLayout;
 use crate::pac::registers::regs::Ir;
 use core::num::{NonZeroU8, NonZeroU16};
 
@@ -298,7 +298,7 @@ impl Default for GlobalFilter {
 }
 
 /// FdCan Config Struct
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct FdCanConfig {
     /// Nominal Bit Timings
@@ -347,9 +347,11 @@ pub struct FdCanConfig {
     pub layout: MessageRamLayout,
 
     //#[cfg(not(feature = "embassy"))]
-    /// How long to wait when entering PowerDownMode before returning an error.
-    pub power_down_timeout_iterations: u32,
-    pub timeout_iterations: u32,
+    /// How long to wait when entering PowerDownMode or aborting before returning an error.
+    /// Should be longer than the longest frame transmission time to not false trigger the timeout, assuming all transmissions are
+    /// aborted before entering power down, and just one might need to be completed.
+    pub timeout_iterations_long: u32,
+    pub timeout_iterations_short: u32,
 }
 
 impl FdCanConfig {
@@ -465,9 +467,9 @@ impl Default for FdCanConfig {
             clock_divider: ClockDivider::_1,
             timestamp_source: TimestampSource::None,
             global_filter: GlobalFilter::default(),
-            layout: Default::default(),
-            power_down_timeout_iterations: 10_000_000,
-            timeout_iterations: 1_000_000,
+            layout: MessageRamLayout::default(),
+            timeout_iterations_long: 10_000_000,
+            timeout_iterations_short: 1_000_000,
         }
     }
 }
@@ -488,11 +490,11 @@ impl FdCan<ConfigMode> {
     fn leave_init_mode(&mut self) -> Result<(), Error> {
         self.apply_config(self.config);
 
-        self.regs.cccr().modify(|w| w.set_cce(false));
-        self.regs.cccr().modify(|w| w.set_init(false));
+        self.can.cccr().modify(|w| w.set_cce(false));
+        self.can.cccr().modify(|w| w.set_init(false));
         crate::util::checked_wait(
-            || self.regs.cccr().read().init(),
-            self.config.timeout_iterations,
+            || self.can.cccr().read().init(),
+            self.config.timeout_iterations_short,
         )?;
         Ok(())
     }
@@ -529,7 +531,7 @@ impl FdCan<ConfigMode> {
     pub fn set_nominal_bit_timing(&mut self, btr: NominalBitTiming) {
         self.config.nbtr = btr;
 
-        self.regs.nbtp().write(|w| {
+        self.can.nbtp().write(|w| {
             w.set_nbrp(btr.nbrp() - 1);
             w.set_ntseg1(btr.ntseg1() - 1);
             w.set_ntseg2(btr.ntseg2() - 1);
@@ -543,7 +545,7 @@ impl FdCan<ConfigMode> {
     pub fn set_data_bit_timing(&mut self, btr: DataBitTiming) {
         self.config.dbtr = btr;
 
-        self.regs.dbtp().write(|w| {
+        self.can.dbtp().write(|w| {
             w.set_dbrp(btr.dbrp() - 1);
             w.set_dtseg1(btr.dtseg1() - 1);
             w.set_dtseg2(btr.dtseg2() - 1);
@@ -559,7 +561,7 @@ impl FdCan<ConfigMode> {
     /// Automatic retransmission is enabled by default.
     #[inline]
     pub fn set_automatic_retransmit(&mut self, enabled: bool) {
-        self.regs.cccr().modify(|w| w.set_dar(!enabled));
+        self.can.cccr().modify(|w| w.set_dar(!enabled));
         self.config.automatic_retransmit = enabled;
     }
 
@@ -567,21 +569,21 @@ impl FdCan<ConfigMode> {
     /// [`FdCanConfig::set_transmit_pause`]
     #[inline]
     pub fn set_transmit_pause(&mut self, enabled: bool) {
-        self.regs.cccr().modify(|w| w.set_txp(enabled));
+        self.can.cccr().modify(|w| w.set_txp(enabled));
         self.config.transmit_pause = enabled;
     }
 
     /// Configures non-iso mode. See [`FdCanConfig::set_non_iso_mode`]
     #[inline]
     pub fn set_non_iso_mode(&mut self, enabled: bool) {
-        self.regs.cccr().modify(|w| w.set_niso(enabled));
+        self.can.cccr().modify(|w| w.set_niso(enabled));
         self.config.non_iso_mode = enabled;
     }
 
     /// Configures edge filtering. See [`FdCanConfig::set_edge_filtering`]
     #[inline]
     pub fn set_edge_filtering(&mut self, enabled: bool) {
-        self.regs.cccr().modify(|w| w.set_efbi(enabled));
+        self.can.cccr().modify(|w| w.set_efbi(enabled));
         self.config.edge_filtering = enabled;
     }
 
@@ -595,7 +597,7 @@ impl FdCan<ConfigMode> {
             FrameTransmissionConfig::AllowFdCanAndBRS => (true, true),
         };
 
-        self.regs.cccr().modify(|w| {
+        self.can.cccr().modify(|w| {
             w.set_fdoe(fdoe);
             w.set_bse(brse);
         });
@@ -607,7 +609,7 @@ impl FdCan<ConfigMode> {
     /// selected for all other interrupts. See
     /// [`FdCanConfig::select_interrupt_line_1`]
     pub fn select_interrupt_line_1(&mut self, l1int: Ir) {
-        self.regs.ils().modify(|w| w.0 = l1int.0);
+        self.can.ils().modify(|w| w.0 = l1int.0);
 
         self.config.interrupt_line_config = l1int;
     }
@@ -615,7 +617,7 @@ impl FdCan<ConfigMode> {
     /// Sets the protocol exception handling on/off
     #[inline]
     pub fn set_protocol_exception_handling(&mut self, enabled: bool) {
-        self.regs.cccr().modify(|w| w.set_pxhd(!enabled));
+        self.can.cccr().modify(|w| w.set_pxhd(!enabled));
 
         self.config.protocol_exception_handling = enabled;
     }
@@ -628,7 +630,7 @@ impl FdCan<ConfigMode> {
             TimestampSource::Prescaler(p) => (p as u8, 0b01),
             TimestampSource::FromTIM3 => (0, 0b10),
         };
-        self.regs.tscc().write(|w| {
+        self.can.tscc().write(|w| {
             w.set_tcp(tcp);
             w.set_tss(tss);
         });
@@ -639,7 +641,7 @@ impl FdCan<ConfigMode> {
     /// Configures the global filter settings
     #[inline]
     pub fn set_global_filter(&mut self, filter: GlobalFilter) {
-        self.regs.gfc().modify(|w| {
+        self.can.gfc().modify(|w| {
             w.set_anfs(filter.handle_standard_frames as u8);
             w.set_anfe(filter.handle_extended_frames as u8);
             w.set_rrfs(filter.reject_remote_standard_frames);
@@ -651,44 +653,44 @@ impl FdCan<ConfigMode> {
     #[inline]
     pub fn set_layout(&mut self, layout: MessageRamLayout) {
         self.config.layout = layout;
-        self.regs.sidfc().modify(|w| {
+        self.can.sidfc().modify(|w| {
             w.set_flssa(layout.eleven_bit_filters_addr);
             w.set_lss(layout.eleven_bit_filters_len);
         });
-        self.regs.xidfc().modify(|w| {
+        self.can.xidfc().modify(|w| {
             w.set_flesa(layout.twenty_nine_bit_filters_addr);
             w.set_lse(layout.twenty_nine_bit_filters_len);
         });
-        self.regs.rxfc(0).modify(|w| {
+        self.can.rxfc(0).modify(|w| {
             w.set_fsa(layout.rx_fifo0_addr);
             w.set_fs(layout.rx_fifo0_len);
         });
-        self.regs.rxfc(1).modify(|w| {
+        self.can.rxfc(1).modify(|w| {
             w.set_fsa(layout.rx_fifo1_addr);
             w.set_fs(layout.rx_fifo1_len);
         });
-        self.regs.rxbc().modify(|w| {
+        self.can.rxbc().modify(|w| {
             w.set_rbsa(layout.rx_buffers_addr);
         });
-        self.regs.rxesc().modify(|w| {
+        self.can.rxesc().modify(|w| {
             w.set_rbds(layout.rx_buffers_data_size.config_register());
             w.set_fds(0, layout.rx_fifo0_data_size.config_register());
             w.set_fds(1, layout.rx_fifo1_data_size.config_register());
         });
-        self.regs.txefc().modify(|w| {
+        self.can.txefc().modify(|w| {
             w.set_efsa(layout.tx_event_fifo_addr);
             w.set_efs(layout.tx_event_fifo_len);
         });
-        self.regs.txbc().modify(|w| {
+        self.can.txbc().modify(|w| {
             w.set_tbsa(layout.tx_buffers_addr);
             w.set_tfqs(layout.tx_fifo_or_queue_len);
             w.set_ndtb(layout.tx_buffers_len);
         });
-        self.regs
+        self.can
             .txesc()
             .modify(|w| w.set_tbds(layout.tx_buffers_data_size.config_register()));
         #[cfg(feature = "h7")]
-        self.regs.tttmc().modify(|w| {
+        self.can.tttmc().modify(|w| {
             w.set_tmsa(layout.trigger_memory_addr);
             w.set_tme(layout.trigger_memory_len);
         });

@@ -1,8 +1,6 @@
 use crate::fdcan::Error;
-use crate::{
-    DataFieldSize, MessageRamBuilder, MessageRamBuilderError, MessageRamLayout,
-    RamBuilderInitialState,
-};
+use crate::message_ram_layout::{DataFieldSize, MessageRamLayout};
+use crate::{MessageRamBuilder, MessageRamBuilderError, RamBuilderInitialState};
 
 #[inline]
 pub(crate) fn checked_wait<F: Fn() -> bool>(f: F, timeout_iterations: u32) -> Result<(), Error> {
