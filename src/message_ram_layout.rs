@@ -1,8 +1,15 @@
 use crate::message_ram_builder::ElevenBitFilters;
-use crate::pac::message_ram::{TxBufferElementT0, TxBufferElementT1};
+use crate::pac::message_ram::{
+    EventFIFOControl, Rtr, TimeStampCaptureEnable, TxBufferElementT0, TxBufferElementT1,
+};
 use crate::pac_traits::{RW, Reg};
+use crate::tx_rx::{Dlc, TxFrameHeader};
 use crate::{Error, FdCan, FdCanInstance, MessageRamBuilder};
 
+/// Message RAM layout containing location and sizes of various buffers.
+///
+/// Note: only if core supports it, for example, G0 and G4 have fixed layout.
+#[cfg(feature = "h7")]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MessageRamLayout {
@@ -35,12 +42,11 @@ pub struct MessageRamLayout {
     pub(crate) tx_fifo_or_queue_len: u8,
     pub(crate) tx_buffers_data_size: DataFieldSize,
 
-    #[cfg(feature = "h7")]
     pub(crate) trigger_memory_addr: u16,
-    #[cfg(feature = "h7")]
     pub(crate) trigger_memory_len: u8,
 }
 
+#[cfg(feature = "h7")]
 impl MessageRamLayout {
     pub(crate) const fn default() -> Self {
         Self {
@@ -54,19 +60,25 @@ impl MessageRamLayout {
             rx_fifo1_addr: 0,
             rx_fifo1_len: 0,
             rx_fifo1_data_size: DataFieldSize::_8Bytes,
+
             rx_buffers_addr: 0,
             rx_buffers_len: 0,
             rx_buffers_data_size: DataFieldSize::_8Bytes,
+
             tx_event_fifo_addr: 0,
             tx_event_fifo_len: 0,
             tx_buffers_addr: 0,
             tx_buffers_len: 0,
             tx_fifo_or_queue_len: 0,
             tx_buffers_data_size: DataFieldSize::_8Bytes,
+
+            trigger_memory_addr: 0,
+            trigger_memory_len: 0,
         }
     }
 }
 
+#[cfg(feature = "h7")]
 impl MessageRamLayout {
     // Turn this layout back into builder, useful if doing re-init of just one CAN instance, without touching others.
     pub fn relayout(self) -> MessageRamBuilder<ElevenBitFilters> {
@@ -77,6 +89,7 @@ impl MessageRamLayout {
 
 /// Data size of RX FIFO0/1, RX buffer and TX buffer element, total element size is 8 bytes longer (2 words header).
 /// Should probably be all the same, and either 8 bytes or 64 bytes, unless some very specific configuration is desired.
+#[cfg(feature = "h7")]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[repr(u8)]
@@ -91,12 +104,14 @@ pub enum DataFieldSize {
     _64Bytes = 64,
 }
 
+#[cfg(feature = "h7")]
 impl DataFieldSize {
     pub(crate) fn max_len(&self) -> u8 {
         *self as u8
     }
 }
 
+#[cfg(feature = "h7")]
 impl DataFieldSize {
     pub(crate) const fn words(&self) -> u16 {
         match self {
@@ -125,21 +140,29 @@ impl DataFieldSize {
     }
 }
 
+#[cfg(feature = "h7")]
 pub struct MessageRam<'a> {
     layout: &'a MessageRamLayout,
+    instance: FdCanInstance,
+}
+
+#[cfg(not(feature = "h7"))]
+pub struct MessageRam {
     instance: FdCanInstance,
 }
 
 /// TX buffer index, up to 32 buffers (dedicated or part of FIFO/Queue) could exist, but it depends on the particular peripheral
 /// instance and RAM layout configuration. Contains an instance it belongs to as well, so it shouldn't be
 /// possible to craft an invalid index outside of this crate.
+#[cfg(feature = "h7")]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TxBufferIdx {
     pub(crate) instance: FdCanInstance,
-    idx: u8,
+    pub(crate) idx: u8,
 }
 
+#[cfg(feature = "h7")]
 impl TxBufferIdx {
     pub(crate) fn idx(&self) -> usize {
         self.idx as usize
@@ -166,6 +189,27 @@ pub(crate) struct TxBufferElement {
     pub(crate) data: &'static mut [u32],
 }
 
+impl TxBufferElement {
+    pub(crate) fn fill(&mut self, tx_header: &TxFrameHeader, dlc: Dlc) {
+        self.t0.write(|w| {
+            w.set_esi(tx_header.error_state);
+            w.set_xtd(tx_header.id.into());
+            w.set_rtr(Rtr::TransmitDataFrame); // TODO: support for RTR?
+            w.set_id(tx_header.id.reg_value());
+        });
+        self.t1.write(|w| {
+            w.set_message_marker_low(tx_header.marker.unwrap_or(0)); // TODO: make marker non-optional?
+            w.set_efc(EventFIFOControl::DontStoreTxEvents); // TODO: control TX event store
+            w.set_tsce(TimeStampCaptureEnable::Disabled);
+            w.set_fdf(tx_header.frame_format);
+            w.set_brs(tx_header.bit_rate_switching.into());
+            w.set_dlc(dlc.reg_value());
+            w.set_message_marker_high(0);
+        });
+    }
+}
+
+#[cfg(feature = "h7")]
 impl<'a> MessageRam<'a> {
     pub(crate) fn tx_buffer(&self, idx: TxBufferIdx) -> Result<TxBufferElement, Error> {
         if idx.instance != self.instance {
@@ -190,10 +234,40 @@ impl<'a> MessageRam<'a> {
     // pub(crate) tx_queue_put()
 }
 
+#[cfg(not(feature = "h7"))]
+impl MessageRam {
+    pub(crate) fn tx_buffer(&self, idx: TxBufferIdx) -> Result<TxBufferElement, Error> {
+        if idx.instance != self.instance {
+            return Err(Error::WrongInstance);
+        }
+        if self.layout.tx_buffers_len == 0 || idx.idx >= self.layout.tx_buffers_len {
+            return Err(Error::TxBufferIndexOutOfRange);
+        }
+        let offset = self.layout.tx_buffers_addr + idx.idx as u16;
+        let tx_buffers_len = self.layout.tx_buffers_data_size.words() as usize;
+        unsafe {
+            let tx_buffer_t0 = crate::pac::FDCAN_MSGRAM_ADDR.add(offset as usize);
+            Ok(TxBufferElement {
+                t0: Reg::from_ptr(tx_buffer_t0 as *mut _),
+                t1: Reg::from_ptr(tx_buffer_t0.add(1) as *mut _),
+                data: core::slice::from_raw_parts_mut(tx_buffer_t0.add(2), tx_buffers_len),
+            })
+        }
+    }
+}
+
 impl<M> FdCan<M> {
+    #[cfg(feature = "h7")]
     pub(crate) fn message_ram(&mut self) -> MessageRam<'_> {
         MessageRam {
             layout: &self.config.layout,
+            instance: self.instance,
+        }
+    }
+
+    #[cfg(not(feature = "h7"))]
+    pub(crate) fn message_ram(&mut self) -> MessageRam {
+        MessageRam {
             instance: self.instance,
         }
     }
