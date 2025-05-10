@@ -441,22 +441,22 @@ impl<M> FdCan<M> {
 
     /// Enables or disables silent mode: Disconnects the TX signal from the pin.
     #[inline]
-    fn set_bus_monitoring_mode(&mut self, enabled: bool) {
+    pub(crate) fn set_bus_monitoring_mode(&mut self, enabled: bool) {
         self.can.cccr().modify(|w| w.set_mon(enabled));
     }
 
     #[inline]
-    fn set_restricted_operations(&mut self, enabled: bool) {
+    pub(crate) fn set_restricted_operations(&mut self, enabled: bool) {
         self.can.cccr().modify(|w| w.set_asm(enabled));
     }
 
     #[inline]
-    fn set_normal_operations(&mut self, _enabled: bool) {
+    pub(crate) fn set_normal_operations(&mut self, _enabled: bool) {
         self.set_loopback_mode(LoopbackMode::None);
     }
 
     #[inline]
-    fn set_test_mode(&mut self, enabled: bool) {
+    pub(crate) fn set_test_mode(&mut self, enabled: bool) {
         self.can.cccr().modify(|w| w.set_test(enabled));
     }
 

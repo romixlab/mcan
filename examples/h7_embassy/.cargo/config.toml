@@ -1,4 +1,4 @@
-[target.thumbv6m-none-eabi]
+[target.thumbv7em-none-eabihf]
 runner = 'probe-rs run --chip STM32H725IGKx'
 
 [build]

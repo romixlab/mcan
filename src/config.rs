@@ -1,4 +1,8 @@
-use crate::fdcan::Error;
+use crate::PoweredDownMode;
+use crate::fdcan::{
+    BusMonitoringMode, Error, ExternalLoopbackMode, NormalOperationMode, RestrictedOperationMode,
+    TestMode,
+};
 use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
 use crate::message_ram_layout::MessageRamLayout;
 use crate::pac::registers::regs::Ir;
@@ -344,6 +348,7 @@ pub struct FdCanConfig {
     /// Configures the Global Filter
     pub global_filter: GlobalFilter,
     /// Configures RAM layout
+    #[cfg(feature = "h7")]
     pub layout: MessageRamLayout,
 
     //#[cfg(not(feature = "embassy"))]
@@ -467,6 +472,7 @@ impl Default for FdCanConfig {
             clock_divider: ClockDivider::_1,
             timestamp_source: TimestampSource::None,
             global_filter: GlobalFilter::default(),
+            #[cfg(feature = "h7")]
             layout: MessageRamLayout::default(),
             timeout_iterations_long: 10_000_000,
             timeout_iterations_short: 1_000_000,
@@ -482,6 +488,77 @@ impl FdCan<ConfigMode> {
         self.set_loopback_mode(LoopbackMode::Internal);
         if let Err(e) = self.leave_init_mode() {
             return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    /// Moves out of ConfigMode and into ExternalLoopbackMode
+    #[inline]
+    pub fn into_external_loopback(
+        mut self,
+    ) -> Result<FdCan<ExternalLoopbackMode>, (Error, FdCan<ConfigMode>)> {
+        self.set_loopback_mode(LoopbackMode::External);
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    /// Moves out of ConfigMode and into RestrictedOperationMode
+    #[inline]
+    pub fn into_restricted(
+        mut self,
+    ) -> Result<FdCan<RestrictedOperationMode>, (Error, FdCan<ConfigMode>)> {
+        self.set_restricted_operations(true);
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    /// Moves out of ConfigMode and into NormalOperationMode
+    #[inline]
+    pub fn into_normal(mut self) -> Result<FdCan<NormalOperationMode>, (Error, FdCan<ConfigMode>)> {
+        self.set_normal_operations(true);
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    /// Moves out of ConfigMode and into BusMonitoringMode
+    #[inline]
+    pub fn into_bus_monitoring(
+        mut self,
+    ) -> Result<FdCan<BusMonitoringMode>, (Error, FdCan<ConfigMode>)> {
+        self.set_bus_monitoring_mode(true);
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    /// Moves out of ConfigMode and into TestMode
+    #[inline]
+    pub fn into_test_mode(mut self) -> Result<FdCan<TestMode>, (Error, FdCan<ConfigMode>)> {
+        self.set_test_mode(true);
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self));
+        }
+        Ok(self.into_mode())
+    }
+
+    /// Moves out of ConfigMode and into PoweredDownMode
+    #[inline]
+    pub fn into_powered_down(
+        mut self,
+    ) -> Result<FdCan<PoweredDownMode>, (Error, FdCan<PoweredDownMode>)> {
+        // TODO: handle error better here, the only reason for it is if timeout is too short, but PoweredDownMode should be reached eventually anyway
+        if let Err(e) = self.set_power_down_mode(true) {
+            return Err((e, self.into_mode()));
+        }
+        if let Err(e) = self.leave_init_mode() {
+            return Err((e, self.into_mode()));
         }
         Ok(self.into_mode())
     }
@@ -512,6 +589,7 @@ impl FdCan<ConfigMode> {
         self.set_edge_filtering(config.edge_filtering);
         self.set_protocol_exception_handling(config.protocol_exception_handling);
         self.set_global_filter(config.global_filter);
+        #[cfg(feature = "h7")]
         self.set_layout(config.layout);
     }
 
@@ -650,6 +728,7 @@ impl FdCan<ConfigMode> {
     }
 
     /// Configures RAM layout for this instance
+    #[cfg(feature = "h7")]
     #[inline]
     pub fn set_layout(&mut self, layout: MessageRamLayout) {
         self.config.layout = layout;
@@ -689,7 +768,6 @@ impl FdCan<ConfigMode> {
         self.can
             .txesc()
             .modify(|w| w.set_tbds(layout.tx_buffers_data_size.config_register()));
-        #[cfg(feature = "h7")]
         self.can.tttmc().modify(|w| {
             w.set_tmsa(layout.trigger_memory_addr);
             w.set_tme(layout.trigger_memory_len);

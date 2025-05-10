@@ -1,4 +1,7 @@
+use crate::Id;
+use crate::fdcan::Transmit;
 use crate::message_ram_layout::TxBufferIdx;
+use crate::pac::message_ram::{Esi, FrameFormat};
 use crate::util::checked_wait;
 use crate::{Error, FdCan};
 
@@ -49,22 +52,34 @@ impl Dlc {
             _ => None,
         }
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum FrameFormat {
-    /// Frame used by Classic CAN
-    Standard = 0,
-    /// New frame format used by FDCAN
-    Fdcan = 1,
+    pub(crate) fn reg_value(&self) -> u8 {
+        match self {
+            Dlc::_0Bytes => 0,
+            Dlc::_1Bytes => 1,
+            Dlc::_2Bytes => 2,
+            Dlc::_3Bytes => 3,
+            Dlc::_4Bytes => 4,
+            Dlc::_5Bytes => 5,
+            Dlc::_6Bytes => 6,
+            Dlc::_7Bytes => 7,
+            Dlc::_8Bytes => 8,
+            Dlc::_12Bytes => 9,
+            Dlc::_16Bytes => 10,
+            Dlc::_20Bytes => 11,
+            Dlc::_24Bytes => 12,
+            Dlc::_32Bytes => 13,
+            Dlc::_48Bytes => 14,
+            Dlc::_64Bytes => 15,
+        }
+    }
 }
 
 /// Header of a transmit request
 #[derive(Debug, Copy, Clone)]
-#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TxFrameHeader {
-    /// Type of message
+    /// Type of message - Classical or FD.
     pub frame_format: FrameFormat,
     /// Id
     pub id: Id,
@@ -73,12 +88,24 @@ pub struct TxFrameHeader {
     /// Not that this is a request, and if the global frame_transmit is set to ClassicCanOnly
     /// this is ignored.
     pub bit_rate_switching: bool,
-    //pub error_state: Option<()>, //TODO
-    ///
+    /// Whether this node is error passive or not
+    pub error_state: Esi,
     pub marker: Option<u8>,
 }
 
-impl<M> FdCan<M> {
+impl TxFrameHeader {
+    pub fn fd_brs(id: Id) -> Self {
+        Self {
+            frame_format: FrameFormat::FD,
+            id,
+            bit_rate_switching: true,
+            error_state: Esi::EsiDependsOnErrorPassive,
+            marker: None,
+        }
+    }
+}
+
+impl<M: Transmit> FdCan<M> {
     // Puts a CAN frame in a transmit mailbox for transmission on the bus.
     //
     // Frames are transmitted to the bus based on their priority (identifier). Transmit order is
@@ -168,14 +195,15 @@ impl<M> FdCan<M> {
     // }
 
     /// Write dedicated TX buffer and set the corresponding "add request" bit.
+    #[cfg(feature = "h7")]
     #[inline]
-    fn write_tx_buffer_pend(
+    pub fn write_tx_buffer_pend(
         &mut self,
         idx: TxBufferIdx,
         tx_header: TxFrameHeader,
         data: &[u8],
     ) -> Result<(), Error> {
-        let tx_buffer = self.message_ram().tx_buffer(idx)?;
+        let mut tx_buffer = self.message_ram().tx_buffer(idx)?;
         let Some(dlc) = Dlc::from_len(data.len()) else {
             return Err(Error::WrongDataSize);
         };
@@ -183,9 +211,7 @@ impl<M> FdCan<M> {
             return Err(Error::WrongDataSize);
         }
 
-        // Clear mail slot; mainly for debugging purposes.
-        // tx_element.reset();
-        // tx_element.header.merge(tx_header);
+        tx_buffer.fill(&tx_header, dlc);
 
         let mut chunks = data.chunks(4);
         for d in tx_buffer.data {

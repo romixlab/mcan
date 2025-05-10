@@ -3,35 +3,40 @@
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 
+use core::num::{NonZeroU8, NonZeroU16};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::gpio::{AfType, Flex, Level, Output, OutputType, Pull, Speed};
-use embassy_stm32::pac::rcc::vals::{Pllm, Plln, Pllq, Pllr, Pllsrc};
+use embassy_stm32::pac::rcc::vals::{Pllm, Plln, Pllsrc};
 use embassy_stm32::rcc::mux::Fdcansel;
-use embassy_stm32::rcc::{AHBPrescaler, APBPrescaler, HseMode, Pll, PllQDiv, PllRDiv, Sysclk};
+use embassy_stm32::rcc::{
+    AHBPrescaler, APBPrescaler, HseMode, Pll, PllDiv, SupplyConfig, Sysclk, VoltageScale,
+};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::{Config, rcc};
 use embassy_time::Timer;
-use mcan::DataFieldSize;
-use mcan::{ElevenBitFilters, MessageRamBuilder, MessageRamBuilderError, MessageRamLayout};
+use mcan::{DataFieldSize, Id, NominalBitTiming, StandardId, TxBufferIdx, TxFrameHeader};
+use mcan::{MessageRamBuilder, MessageRamBuilderError, MessageRamLayout, RamBuilderInitialState};
 use {defmt_rtt as _, panic_probe as _};
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let mut config = Config::default();
     config.rcc.hse = Some(rcc::Hse {
-        freq: Hertz::mhz(12),
-        mode: HseMode::Oscillator,
+        freq: Hertz::mhz(24),
+        mode: HseMode::Bypass,
     });
-    config.rcc.pll = Some(Pll {
+    config.rcc.pll1 = Some(Pll {
         source: Pllsrc::HSE,
-        prediv: Pllm::DIV1,
-        mul: Plln::MUL8,
-        divp: None,
-        divq: Some(Pllq::DIV2),
-        divr: Some(Pllr::DIV8),
+        prediv: Pllm::DIV12,
+        mul: Plln::MUL128,
+        divp: Some(PllDiv::DIV2),
+        divq: Some(PllDiv::DIV4),
+        divr: None,
     });
-    config.rcc.sys = Sysclk::PLL1_R;
+    config.rcc.voltage_scale = VoltageScale::Scale0; // TODO: adjust
+    config.rcc.supply_config = SupplyConfig::DirectSMPS;
+    config.rcc.sys = Sysclk::PLL1_P;
     config.rcc.ahb_pre = AHBPrescaler::DIV2;
     config.rcc.apb1_pre = APBPrescaler::DIV2;
     config.rcc.mux.fdcansel = Fdcansel::PLL1_Q;
@@ -39,48 +44,78 @@ async fn main(_spawner: Spawner) {
 
     info!("Hello World!");
 
-    let mut led = Output::new(p.PB14, Level::High, Speed::Low);
+    let mut led = Output::new(p.PC7, Level::High, Speed::Low);
 
-    let tx = p.PD1;
-    let rx = p.PB8;
+    let mut term1_en = Output::new(p.PC13, Level::Low, Speed::Low);
+    term1_en.set_high();
+    Timer::after_millis(50).await;
+    term1_en.set_low();
 
-    let af_tx = embassy_stm32::can::TxPin::af_num(&can_tx);
-    let mut can_tx = Flex::new(can_tx);
-    can_tx.set_as_af_unchecked(af_tx, AfType::output(OutputType::PushPull, Speed::VeryHigh));
-    core::mem::forget(can_tx);
+    mcan::embassy::configure_pins!(tx: p.PB9, rx: p.PB8);
 
-    let af_rx = embassy_stm32::can::RxPin::af_num(&can_rx);
-    let mut can_rx = Flex::new(can_rx);
-    can_rx.set_as_af_unchecked(af_rx, AfType::input(Pull::None));
-    core::mem::forget(can_rx);
+    let (mut can_instances, builder) = unwrap!(mcan::FdCanInstances::new());
+    let (layout_fdcan1, _builder, tx_buffers) = unwrap!(layout_fdcan_ram(builder));
+    let can = unwrap!(can_instances.take_enabled(mcan::FdCanInstance::FdCan1));
 
-    let builder = unwrap!(mcan::message_ram::message_ram_builder());
-    let (layout_fdcan1, _builder) = unwrap!(layout_fdcan_ram(builder));
-
-    let can = unwrap!(mcan::new_fdcan1());
     let mut can = unwrap!(can.into_config_mode().map_err(|(e, _)| e));
+    can.set_nominal_bit_timing(NominalBitTiming {
+        prescaler: unwrap!(NonZeroU16::new(1)),
+        seg1: unwrap!(NonZeroU8::new(55)),
+        seg2: unwrap!(NonZeroU8::new(8)),
+        sync_jump_width: unwrap!(NonZeroU8::new(1)),
+    });
+    debug!("layout: {:#?}", layout_fdcan1);
     can.set_layout(layout_fdcan1);
 
-    let can = unwrap!(can.into_internal_loopback().map_err(|(e, _)| e));
+    let mut can = unwrap!(can.into_normal().map_err(|(e, _)| e));
+
+    debug!("init done");
 
     loop {
+        debug!("send");
+        let r = can.write_tx_buffer_pend(
+            tx_buffers.idx1,
+            TxFrameHeader::fd_brs(Id::Standard(unwrap!(StandardId::new(0x123)))),
+            &[0xAA, 0xBB, 0xCC],
+        );
+        unwrap!(r);
+
         led.set_high();
-        Timer::after_millis(3).await;
+        Timer::after_millis(1000).await;
 
         led.set_low();
-        Timer::after_millis(1000).await;
+        Timer::after_millis(3).await;
     }
 }
 
+struct DedicatedTxBuffers {
+    idx1: TxBufferIdx,
+    idx2: TxBufferIdx,
+    idx3: TxBufferIdx,
+}
+
 fn layout_fdcan_ram(
-    builder: MessageRamBuilder<ElevenBitFilters>,
-) -> Result<(MessageRamLayout, MessageRamBuilder<ElevenBitFilters>), MessageRamBuilderError> {
-    let (layout, builder) = builder
-        .allocate_11bit_filters(28)?
+    builder: MessageRamBuilder<RamBuilderInitialState>,
+) -> Result<
+    (
+        MessageRamLayout,
+        MessageRamBuilder<RamBuilderInitialState>,
+        DedicatedTxBuffers,
+    ),
+    MessageRamBuilderError,
+> {
+    let builder = builder
+        .allocate_11bit_filters(3)?
         .allocate_29bit_filters(3)?
         .allocate_rx_fifo0_buffers(3, DataFieldSize::_64Bytes)?
         .allocate_rx_fifo1_buffers(0, DataFieldSize::_64Bytes)?
+        .allocate_rx_buffers(3, DataFieldSize::_64Bytes)?
         .allocate_tx_event_fifo_buffers(3)?
-        .allocate_tx_buffers(1, 2, DataFieldSize::_64Bytes)?;
-    Ok((layout, builder))
+        .tx_buffer_element_size(DataFieldSize::_64Bytes);
+    let (idx1, builder) = builder.allocate_dedicated_tx_buffer()?;
+    let (idx2, builder) = builder.allocate_dedicated_tx_buffer()?;
+    let (idx3, builder) = builder.allocate_dedicated_tx_buffer()?;
+    let (layout, builder) = builder.allocate_fifo_or_queue(3)?.allocate_triggers(0)?;
+    let tx_buffers = DedicatedTxBuffers { idx1, idx2, idx3 };
+    Ok((layout, builder, tx_buffers))
 }

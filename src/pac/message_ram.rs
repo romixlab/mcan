@@ -2,6 +2,7 @@ use bitfield_struct::bitfield;
 
 macro_rules! enum_bit {
     ($name:ident, $zero_name:ident, $one_name:ident) => {
+        #[derive(Copy, Clone, Debug)]
         #[cfg_attr(feature = "defmt", derive(defmt::Format))]
         pub enum $name {
             /// 0 =
@@ -32,7 +33,7 @@ macro_rules! enum_bit {
 /// Up to 128 filter elements can be configured for 11-bit IDs. When accessing a Standard Message ID
 /// Filter element, its address is the Filter List Standard Start Address SIDFC.FLSSA plus the index of
 /// the filter element (0…127).
-#[bitfield(u32, order = Msb, default = false, debug = false, defmt = cfg(feature = "defmt"))]
+#[bitfield(u32, order = Msb, debug = false, defmt = cfg(feature = "defmt"))]
 pub struct StandardFilterElement {
     /// Standard Filter Type
     #[bits(2)]
@@ -171,7 +172,7 @@ impl StandardFilterConfiguration {
 /// The Tx Handler distinguishes between dedicated Tx Buffers and Tx FIFO / Tx Queue by evaluating the
 /// Tx Buffer configuration TXBC. TFQS and TXBC.NDTB. The element size can be configured for storage of
 /// CAN FD messages with up to 64  bytes data field via register TXESC.
-#[bitfield(u32, order = Msb, default = false, debug = false, defmt = cfg(feature = "defmt"))]
+#[bitfield(u32, order = Msb, debug = false, defmt = cfg(feature = "defmt"))]
 pub(crate) struct TxBufferElementT0 {
     /// Error State Indicator
     ///
@@ -184,7 +185,7 @@ pub(crate) struct TxBufferElementT0 {
 
     /// Extended Identifier
     #[bits(1)]
-    pub xtd: ExtendedIdentifier,
+    pub xtd: Xtd,
 
     /// Remote Transmission Request
     ///
@@ -199,10 +200,10 @@ pub(crate) struct TxBufferElementT0 {
 }
 
 enum_bit!(Esi, EsiDependsOnErrorPassive, EsiTransmittedRecessive);
-enum_bit!(ExtendedIdentifier, ElevenBits, TwentyNineBits);
+enum_bit!(Xtd, ElevenBits, TwentyNineBits);
 enum_bit!(Rtr, TransmitDataFrame, TransmitRemoteFrame);
 
-#[bitfield(u32, order = Msb, default = false, debug = false, defmt = cfg(feature = "defmt"))]
+#[bitfield(u32, order = Msb, debug = false, defmt = cfg(feature = "defmt"))]
 pub(crate) struct TxBufferElementT1 {
     /// Written by CPU during Tx Buffer configuration. Copied into Tx Event FIFO element for identification
     /// of Tx message status.
@@ -217,7 +218,7 @@ pub(crate) struct TxBufferElementT1 {
     pub tsce: TimeStampCaptureEnable,
 
     #[bits(1)]
-    pub fdf: FDFormat,
+    pub fdf: FrameFormat,
 
     #[bits(1)]
     pub brs: BitRateSwitch,
@@ -246,5 +247,15 @@ pub(crate) struct TxBufferElementT1 {
 
 enum_bit!(EventFIFOControl, DontStoreTxEvents, StoreTxEvents);
 enum_bit!(TimeStampCaptureEnable, Disabled, Enabled);
-enum_bit!(FDFormat, Classic, FD);
+enum_bit!(FrameFormat, Classic, FD);
 enum_bit!(BitRateSwitch, Without, Switch);
+
+impl From<bool> for BitRateSwitch {
+    fn from(b: bool) -> Self {
+        if b {
+            BitRateSwitch::Switch
+        } else {
+            BitRateSwitch::Without
+        }
+    }
+}

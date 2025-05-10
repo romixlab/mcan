@@ -4,21 +4,26 @@ pub mod config;
 pub mod message_ram_builder;
 pub mod pac_traits;
 
-pub use message_ram_builder::{MessageRamBuilder, MessageRamBuilderError, RamBuilderInitialState};
 pub mod fdcan;
 pub mod pac;
 pub mod util;
 
 #[cfg(feature = "embassy")]
 pub mod embassy;
+pub mod id;
+#[cfg(feature = "h7")]
 mod message_ram_layout;
 pub mod tx_rx;
 
+pub use config::{DataBitTiming, NominalBitTiming};
 pub use fdcan::{
     ConfigMode, Error, FdCan, FdCanInstance, FdCanInstances, InternalLoopbackMode, PoweredDownMode,
 };
-pub use message_ram_layout::DataFieldSize;
-pub use message_ram_layout::MessageRamLayout;
+pub use id::{ExtendedId, Id, StandardId};
+pub use message_ram_builder::{MessageRamBuilder, MessageRamBuilderError, RamBuilderInitialState};
+#[cfg(feature = "h7")]
+pub use message_ram_layout::{DataFieldSize, MessageRamLayout, TxBufferIdx};
+pub use tx_rx::TxFrameHeader;
 
 // we must wait two peripheral clock cycles before the clock is active
 // http://efton.sk/STM32/gotcha/g183.html
