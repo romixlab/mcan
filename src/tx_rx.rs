@@ -220,11 +220,11 @@ impl<M: Transmit> FdCan<M> {
             };
             let word = if chunk.len() == 4 {
                 let word: [u8; 4] = chunk.try_into().expect("length is 4");
-                u32::from_be_bytes(word)
+                u32::from_le_bytes(word)
             } else {
                 let mut word = [0u8; 4];
                 word[..chunk.len()].copy_from_slice(chunk);
-                u32::from_be_bytes(word)
+                u32::from_le_bytes(word)
             };
             *d = word;
         }
