@@ -4,6 +4,7 @@ use crate::fdcan::{
     TestMode,
 };
 use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
+#[cfg(feature = "h7")]
 use crate::message_ram_layout::MessageRamLayout;
 use crate::pac::registers::regs::Ir;
 use core::num::{NonZeroU8, NonZeroU16};

@@ -196,7 +196,6 @@ impl<M: Transmit> FdCan<M> {
 
     /// Write dedicated TX buffer and set the corresponding "add request" bit.
     #[cfg(feature = "h7")]
-    #[inline]
     pub fn write_tx_buffer_pend(
         &mut self,
         idx: TxBufferIdx,
@@ -230,8 +229,16 @@ impl<M: Transmit> FdCan<M> {
         }
 
         // Set as ready to transmit
-        self.can.txbar().modify(|w| w.set_ar(idx.idx(), true));
+        self.tx_buffer_pend(idx);
         Ok(())
+    }
+
+    /// Mark dedicated TX buffer as ready to transmit without modifying anything
+    #[cfg(feature = "h7")]
+    #[inline]
+    pub fn tx_buffer_pend(&mut self, idx: TxBufferIdx) {
+        // Set as ready to transmit
+        self.can.txbar().modify(|w| w.set_ar(idx.idx(), true));
     }
 
     // #[inline]

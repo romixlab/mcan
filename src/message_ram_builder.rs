@@ -29,19 +29,13 @@ pub struct MessageRamBuilder<S> {
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum MessageRamBuilderError {
-    BuilderTaken,
     TooManyElements,
     OutOfMemory,
     TooManyInstances,
 }
 
-static BUILDER_TAKEN: StaticCell<()> = StaticCell::new();
-
 pub(crate) fn message_ram_builder()
 -> Result<MessageRamBuilder<ElevenBitFilters>, MessageRamBuilderError> {
-    if BUILDER_TAKEN.try_init(()).is_none() {
-        return Err(MessageRamBuilderError::BuilderTaken);
-    }
     let end = crate::pac::FDCAN_MSGRAM_LEN_WORDS as u16 - 4;
     Ok(MessageRamBuilder {
         pos: 0,

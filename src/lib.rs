@@ -1,6 +1,7 @@
 #![no_std]
 
 pub mod config;
+#[cfg(feature = "h7")]
 pub mod message_ram_builder;
 pub mod pac_traits;
 
@@ -11,7 +12,6 @@ pub mod util;
 #[cfg(feature = "embassy")]
 pub mod embassy;
 pub mod id;
-#[cfg(feature = "h7")]
 mod message_ram_layout;
 pub mod tx_rx;
 
@@ -20,6 +20,7 @@ pub use fdcan::{
     ConfigMode, Error, FdCan, FdCanInstance, FdCanInstances, InternalLoopbackMode, PoweredDownMode,
 };
 pub use id::{ExtendedId, Id, StandardId};
+#[cfg(feature = "h7")]
 pub use message_ram_builder::{MessageRamBuilder, MessageRamBuilderError, RamBuilderInitialState};
 #[cfg(feature = "h7")]
 pub use message_ram_layout::{DataFieldSize, MessageRamLayout, TxBufferIdx};

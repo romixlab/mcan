@@ -46,10 +46,10 @@ async fn main(_spawner: Spawner) {
 
     let mut led = Output::new(p.PC7, Level::High, Speed::Low);
 
-    let mut term1_en = Output::new(p.PC13, Level::Low, Speed::Low);
-    term1_en.set_high();
-    Timer::after_millis(50).await;
-    term1_en.set_low();
+    // let mut term1_en = Output::new(p.PC13, Level::Low, Speed::Low);
+    // term1_en.set_high();
+    // Timer::after_millis(50).await;
+    // term1_en.set_low();
 
     mcan::embassy::configure_pins!(tx: p.PB9, rx: p.PB8);
 
@@ -57,7 +57,7 @@ async fn main(_spawner: Spawner) {
     let (layout_fdcan1, _builder, tx_buffers) = unwrap!(layout_fdcan_ram(builder));
     let can = unwrap!(can_instances.take_enabled(mcan::FdCanInstance::FdCan1));
 
-    let mut can = unwrap!(can.into_config_mode().map_err(|(e, _)| e));
+    let mut can = unwrap!(can.into_config_mode());
     can.set_nominal_bit_timing(NominalBitTiming {
         prescaler: unwrap!(NonZeroU16::new(1)),
         seg1: unwrap!(NonZeroU8::new(55)),
@@ -67,12 +67,12 @@ async fn main(_spawner: Spawner) {
     debug!("layout: {:#?}", layout_fdcan1);
     can.set_layout(layout_fdcan1);
 
-    let mut can = unwrap!(can.into_normal().map_err(|(e, _)| e));
+    let mut can = unwrap!(can.into_normal());
 
     debug!("init done");
 
     loop {
-        debug!("send");
+        // debug!("send");
         let r = can.write_tx_buffer_pend(
             tx_buffers.idx1,
             TxFrameHeader::fd_brs(Id::Standard(unwrap!(StandardId::new(0x123)))),

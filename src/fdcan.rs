@@ -1,11 +1,11 @@
 use crate::config::FdCanConfig;
-use crate::message_ram_builder::message_ram_builder;
 use crate::pac::{
     FDCAN_MSGRAM_ADDR, FDCAN_MSGRAM_LEN_WORDS, FDCAN1_REGISTER_BLOCK_ADDR,
     FDCAN2_REGISTER_BLOCK_ADDR, RCC_REGISTER_BLOCK_ADDR,
 };
-use crate::{CLOCK_DOMAIN_SYNCHRONIZATION_DELAY, MessageRamBuilder, RamBuilderInitialState, pac};
+use crate::{CLOCK_DOMAIN_SYNCHRONIZATION_DELAY, pac};
 use core::marker::PhantomData;
+use static_cell::StaticCell;
 
 pub struct FdCan<M> {
     pub(crate) can: pac::registers::Fdcan,
@@ -131,10 +131,26 @@ pub enum FdCanInstance {
     FdCan3,
 }
 
+#[cfg(feature = "h7")]
+type NewResult = (
+    FdCanInstances,
+    crate::message_ram_builder::MessageRamBuilder<
+        crate::message_ram_builder::RamBuilderInitialState,
+    >,
+);
+#[cfg(not(feature = "h7"))]
+type NewResult = FdCanInstances;
+
+static PERIPHERAL_TAKEN: StaticCell<()> = StaticCell::new();
+
 impl FdCanInstances {
     /// Creates FDCAN instances in powered down state (enable a flag is cleared in RCC as well).
     /// This method can be called only once, otherwise Error::PeripheralTaken is returned.
-    pub fn new() -> Result<(Self, MessageRamBuilder<RamBuilderInitialState>), Error> {
+    pub fn new() -> Result<NewResult, Error> {
+        if PERIPHERAL_TAKEN.try_init(()).is_none() {
+            return Err(Error::PeripheralTaken);
+        }
+
         #[cfg(feature = "embassy")]
         let fdcan1_state = crate::embassy::state_fdcan1()?;
         #[cfg(feature = "embassy")]
@@ -142,7 +158,9 @@ impl FdCanInstances {
         #[cfg(all(feature = "embassy", feature = "h7"))]
         let fdcan3_state = crate::embassy::state_fdcan3()?;
 
-        let ram_builder = message_ram_builder().map_err(|_| Error::PeripheralTaken)?;
+        #[cfg(feature = "h7")]
+        let ram_builder = crate::message_ram_builder::message_ram_builder()
+            .map_err(|_| Error::PeripheralTaken)?;
 
         let mut s = Self::empty();
 
@@ -189,7 +207,11 @@ impl FdCanInstances {
         {
             s.fdcan3 = Some(fdcan3);
         }
-        Ok((s, ram_builder))
+        #[cfg(feature = "h7")]
+        let r = Ok((s, ram_builder));
+        #[cfg(not(feature = "h7"))]
+        let r = Ok(s);
+        r
     }
 
     /// There is no need to keep FdCanInstances around if all instances were taken from it, but if clocks need to be disabled, then

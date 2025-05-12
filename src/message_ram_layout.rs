@@ -1,10 +1,9 @@
-use crate::message_ram_builder::ElevenBitFilters;
 use crate::pac::message_ram::{
     EventFIFOControl, Rtr, TimeStampCaptureEnable, TxBufferElementT0, TxBufferElementT1,
 };
 use crate::pac_traits::{RW, Reg};
 use crate::tx_rx::{Dlc, TxFrameHeader};
-use crate::{Error, FdCan, FdCanInstance, MessageRamBuilder};
+use crate::{Error, FdCan, FdCanInstance};
 
 /// Message RAM layout containing location and sizes of various buffers.
 ///
@@ -81,7 +80,11 @@ impl MessageRamLayout {
 #[cfg(feature = "h7")]
 impl MessageRamLayout {
     // Turn this layout back into builder, useful if doing re-init of just one CAN instance, without touching others.
-    pub fn relayout(self) -> MessageRamBuilder<ElevenBitFilters> {
+    pub fn relayout(
+        self,
+    ) -> crate::message_ram_builder::MessageRamBuilder<
+        crate::message_ram_builder::RamBuilderInitialState,
+    > {
         // pos: first non zero start, end: last non zero start+size?
         todo!()
     }
@@ -151,10 +154,12 @@ pub struct MessageRam {
     instance: FdCanInstance,
 }
 
-/// TX buffer index, up to 32 buffers (dedicated or part of FIFO/Queue) could exist, but it depends on the particular peripheral
-/// instance and RAM layout configuration. Contains an instance it belongs to as well, so it shouldn't be
-/// possible to craft an invalid index outside of this crate.
-#[cfg(feature = "h7")]
+/// Dedicated TX buffer index that can be obtained during RAM layout by calling allocate_dedicated_tx_buffer().
+/// Not available on G0, G4 and L5, as there is no support for dedicated TX buffers on these MCUs.
+///
+/// Up to 32 buffers (dedicated or part of FIFO/Queue) could exist, but it depends on the particular peripheral
+/// instance and RAM layout configuration. Contains an instance it belongs to as well, so trying to use an index from one CAN instance
+/// with another will result in an Error::WrongInstance.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TxBufferIdx {
@@ -162,7 +167,6 @@ pub struct TxBufferIdx {
     pub(crate) idx: u8,
 }
 
-#[cfg(feature = "h7")]
 impl TxBufferIdx {
     pub(crate) fn idx(&self) -> usize {
         self.idx as usize
@@ -235,26 +239,7 @@ impl<'a> MessageRam<'a> {
 }
 
 #[cfg(not(feature = "h7"))]
-impl MessageRam {
-    pub(crate) fn tx_buffer(&self, idx: TxBufferIdx) -> Result<TxBufferElement, Error> {
-        if idx.instance != self.instance {
-            return Err(Error::WrongInstance);
-        }
-        if self.layout.tx_buffers_len == 0 || idx.idx >= self.layout.tx_buffers_len {
-            return Err(Error::TxBufferIndexOutOfRange);
-        }
-        let offset = self.layout.tx_buffers_addr + idx.idx as u16;
-        let tx_buffers_len = self.layout.tx_buffers_data_size.words() as usize;
-        unsafe {
-            let tx_buffer_t0 = crate::pac::FDCAN_MSGRAM_ADDR.add(offset as usize);
-            Ok(TxBufferElement {
-                t0: Reg::from_ptr(tx_buffer_t0 as *mut _),
-                t1: Reg::from_ptr(tx_buffer_t0.add(1) as *mut _),
-                data: core::slice::from_raw_parts_mut(tx_buffer_t0.add(2), tx_buffers_len),
-            })
-        }
-    }
-}
+impl MessageRam {}
 
 impl<M> FdCan<M> {
     #[cfg(feature = "h7")]
