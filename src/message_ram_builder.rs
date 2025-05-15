@@ -2,7 +2,6 @@ use crate::FdCanInstance;
 use crate::message_ram_layout::{DataFieldSize, MessageRamLayout, TxBufferIdx};
 use core::marker::PhantomData;
 use paste::paste;
-use static_cell::StaticCell;
 
 // The builder states below. Builder will go through these states step by step for consistency and
 // simplicity, though MCAN itself does not impose a particular order of various blocks.

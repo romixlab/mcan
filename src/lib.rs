@@ -9,6 +9,8 @@ pub mod fdcan;
 pub mod pac;
 pub mod util;
 
+#[cfg(feature = "asynchronous")]
+pub mod asynchronous;
 #[cfg(feature = "embassy")]
 pub mod embassy;
 pub mod id;
@@ -17,7 +19,8 @@ pub mod tx_rx;
 
 pub use config::{DataBitTiming, NominalBitTiming};
 pub use fdcan::{
-    ConfigMode, Error, FdCan, FdCanInstance, FdCanInstances, InternalLoopbackMode, PoweredDownMode,
+    ConfigMode, Error, FdCan, FdCanInstance, FdCanInstances, FdCanInterrupt, InternalLoopbackMode,
+    PoweredDownMode,
 };
 pub use id::{ExtendedId, Id, StandardId};
 #[cfg(feature = "h7")]

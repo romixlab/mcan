@@ -202,6 +202,9 @@ impl<M: Transmit> FdCan<M> {
         tx_header: TxFrameHeader,
         data: &[u8],
     ) -> Result<(), Error> {
+        if idx.instance != self.instance {
+            return Err(Error::WrongInstance);
+        }
         let mut tx_buffer = self.message_ram().tx_buffer(idx)?;
         let Some(dlc) = Dlc::from_len(data.len()) else {
             return Err(Error::WrongDataSize);
@@ -229,16 +232,20 @@ impl<M: Transmit> FdCan<M> {
         }
 
         // Set as ready to transmit
-        self.tx_buffer_pend(idx);
+        _ = self.tx_buffer_pend(idx);
         Ok(())
     }
 
     /// Mark dedicated TX buffer as ready to transmit without modifying anything
     #[cfg(feature = "h7")]
     #[inline]
-    pub fn tx_buffer_pend(&mut self, idx: TxBufferIdx) {
+    pub fn tx_buffer_pend(&mut self, idx: TxBufferIdx) -> Result<(), Error> {
+        if idx.instance != self.instance {
+            return Err(Error::WrongInstance);
+        }
         // Set as ready to transmit
         self.can.txbar().modify(|w| w.set_ar(idx.idx(), true));
+        Ok(())
     }
 
     // #[inline]
@@ -278,7 +285,7 @@ impl<M: Transmit> FdCan<M> {
     ///
     /// NOTE: Core supports multiple tx buffers abort as well.
     #[inline]
-    fn abort(&mut self, idx: TxBufferIdx) -> Result<bool, Error> {
+    pub fn abort_blocking(&mut self, idx: TxBufferIdx) -> Result<bool, Error> {
         if idx.instance != self.instance {
             return Err(Error::WrongInstance);
         }

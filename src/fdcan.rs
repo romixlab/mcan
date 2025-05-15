@@ -11,7 +11,7 @@ pub struct FdCan<M> {
     pub(crate) can: pac::registers::Fdcan,
     pub(crate) instance: FdCanInstance,
     #[cfg(feature = "embassy")]
-    pub(crate) state: &'static mut crate::embassy::State,
+    pub(crate) state: &'static crate::asynchronous::State,
     pub(crate) config: FdCanConfig,
     pub(crate) _mode: PhantomData<M>,
 }
@@ -131,6 +131,11 @@ pub enum FdCanInstance {
     FdCan3,
 }
 
+pub enum FdCanInterrupt {
+    Irq0,
+    Irq1,
+}
+
 #[cfg(feature = "h7")]
 type NewResult = (
     FdCanInstances,
@@ -151,12 +156,18 @@ impl FdCanInstances {
             return Err(Error::PeripheralTaken);
         }
 
+        let fdcan1_regs = unsafe { pac::registers::Fdcan::from_ptr(FDCAN1_REGISTER_BLOCK_ADDR) };
+        let fdcan2_regs = unsafe { pac::registers::Fdcan::from_ptr(FDCAN2_REGISTER_BLOCK_ADDR) };
+        #[cfg(feature = "h7")]
+        let fdcan3_regs =
+            unsafe { pac::registers::Fdcan::from_ptr(pac::FDCAN3_REGISTER_BLOCK_ADDR) };
+
         #[cfg(feature = "embassy")]
-        let fdcan1_state = crate::embassy::state_fdcan1()?;
+        let fdcan1_state = crate::asynchronous::state_fdcan1();
         #[cfg(feature = "embassy")]
-        let fdcan2_state = crate::embassy::state_fdcan2()?;
+        let fdcan2_state = crate::asynchronous::state_fdcan2();
         #[cfg(all(feature = "embassy", feature = "h7"))]
-        let fdcan3_state = crate::embassy::state_fdcan3()?;
+        let fdcan3_state = crate::asynchronous::state_fdcan3();
 
         #[cfg(feature = "h7")]
         let ram_builder = crate::message_ram_builder::message_ram_builder()
@@ -169,12 +180,6 @@ impl FdCanInstances {
 
         #[cfg(feature = "h7")]
         s.rcc.apb1henr().modify(|w| w.set_fdcanen(false));
-
-        let fdcan1_regs = unsafe { pac::registers::Fdcan::from_ptr(FDCAN1_REGISTER_BLOCK_ADDR) };
-        let fdcan2_regs = unsafe { pac::registers::Fdcan::from_ptr(FDCAN2_REGISTER_BLOCK_ADDR) };
-        #[cfg(feature = "h7")]
-        let fdcan3_regs =
-            unsafe { pac::registers::Fdcan::from_ptr(pac::FDCAN3_REGISTER_BLOCK_ADDR) };
 
         let fdcan1 = FdCan {
             can: fdcan1_regs,

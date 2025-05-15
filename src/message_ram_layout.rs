@@ -216,9 +216,6 @@ impl TxBufferElement {
 #[cfg(feature = "h7")]
 impl<'a> MessageRam<'a> {
     pub(crate) fn tx_buffer(&self, idx: TxBufferIdx) -> Result<TxBufferElement, Error> {
-        if idx.instance != self.instance {
-            return Err(Error::WrongInstance);
-        }
         if self.layout.tx_buffers_len == 0 || idx.idx >= self.layout.tx_buffers_len {
             return Err(Error::TxBufferIndexOutOfRange);
         }

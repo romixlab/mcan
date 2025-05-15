@@ -568,6 +568,9 @@ impl FdCan<ConfigMode> {
     fn leave_init_mode(&mut self) -> Result<(), Error> {
         self.apply_config(self.config);
 
+        #[cfg(feature = "asynchronous")]
+        self.enable_interrupts();
+
         self.can.cccr().modify(|w| w.set_cce(false));
         self.can.cccr().modify(|w| w.set_init(false));
         crate::util::checked_wait(
@@ -575,6 +578,17 @@ impl FdCan<ConfigMode> {
             self.config.timeout_iterations_short,
         )?;
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(feature = "asynchronous")]
+    fn enable_interrupts(&mut self) {
+        use crate::pac::registers::regs::{Ie, Txbcie, Txbtie};
+        // Enable all interrupts when this crate handles them
+        self.can.ie().write_value(Ie(u32::MAX >> 2));
+        self.can.txbtie().write_value(Txbtie(u32::MAX));
+        self.can.txbcie().write_value(Txbcie(u32::MAX));
+        self.can.ile().modify(|w| w.set_eint0(true));
     }
 
     /// Applies the settings of a new FdCanConfig See [`FdCanConfig`]

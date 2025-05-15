@@ -567,6 +567,7 @@ dependencies = [
  "bitfield-struct",
  "cortex-m",
  "defmt 1.0.1",
+ "embassy-sync",
  "paste",
  "static_cell",
 ]

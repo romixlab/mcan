@@ -4,18 +4,22 @@
 #![feature(impl_trait_in_assoc_type)]
 
 use core::num::{NonZeroU8, NonZeroU16};
+use cortex_m::peripheral::NVIC;
 use defmt::*;
 use embassy_executor::Spawner;
-use embassy_stm32::gpio::{AfType, Flex, Level, Output, OutputType, Pull, Speed};
+use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_stm32::pac::rcc::vals::{Pllm, Plln, Pllsrc};
 use embassy_stm32::rcc::mux::Fdcansel;
 use embassy_stm32::rcc::{
     AHBPrescaler, APBPrescaler, HseMode, Pll, PllDiv, SupplyConfig, Sysclk, VoltageScale,
 };
 use embassy_stm32::time::Hertz;
-use embassy_stm32::{Config, rcc};
+use embassy_stm32::{Config, interrupt, rcc};
 use embassy_time::Timer;
-use mcan::{DataFieldSize, Id, NominalBitTiming, StandardId, TxBufferIdx, TxFrameHeader};
+use mcan::{
+    DataFieldSize, FdCanInstance, FdCanInterrupt, Id, NominalBitTiming, StandardId, TxBufferIdx,
+    TxFrameHeader,
+};
 use mcan::{MessageRamBuilder, MessageRamBuilderError, MessageRamLayout, RamBuilderInitialState};
 use {defmt_rtt as _, panic_probe as _};
 
@@ -67,7 +71,13 @@ async fn main(_spawner: Spawner) {
     debug!("layout: {:#?}", layout_fdcan1);
     can.set_layout(layout_fdcan1);
 
-    let mut can = unwrap!(can.into_normal());
+    let mut can = unwrap!(can.into_internal_loopback());
+    // let mut can = unwrap!(can.into_normal());
+
+    unsafe {
+        NVIC::unmask(embassy_stm32::pac::Interrupt::FDCAN1_IT0);
+        NVIC::unmask(embassy_stm32::pac::Interrupt::FDCAN1_IT1);
+    };
 
     debug!("init done");
 
@@ -118,4 +128,14 @@ fn layout_fdcan_ram(
     let (layout, builder) = builder.allocate_fifo_or_queue(3)?.allocate_triggers(0)?;
     let tx_buffers = DedicatedTxBuffers { idx1, idx2, idx3 };
     Ok((layout, builder, tx_buffers))
+}
+
+#[interrupt]
+fn FDCAN1_IT0() {
+    mcan::asynchronous::on_interrupt(FdCanInstance::FdCan1, FdCanInterrupt::Irq0);
+}
+
+#[interrupt]
+fn FDCAN1_IT1() {
+    mcan::asynchronous::on_interrupt(FdCanInstance::FdCan1, FdCanInterrupt::Irq1);
 }

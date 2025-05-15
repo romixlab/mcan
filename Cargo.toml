@@ -7,6 +7,7 @@ edition = "2024"
 static_cell = "2"
 cortex-m = { version = "0.7" }
 bitfield-struct = "0.11"
+embassy-sync = { version = "0.6", optional = true }
 defmt = { version = "1", optional = true }
 paste = "1"
 
@@ -17,4 +18,5 @@ g4 = []
 l5 = []
 h7 = []
 defmt = []
-embassy = []
+asynchronous = ["dep:embassy-sync"]
+embassy = ["asynchronous"]
