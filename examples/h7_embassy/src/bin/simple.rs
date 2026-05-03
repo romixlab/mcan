@@ -71,8 +71,8 @@ async fn main(_spawner: Spawner) {
     debug!("layout: {:#?}", layout_fdcan1);
     can.set_layout(layout_fdcan1);
 
-    let mut can = unwrap!(can.into_internal_loopback());
-    // let mut can = unwrap!(can.into_normal());
+    //let mut can = unwrap!(can.into_internal_loopback());
+    let mut can = unwrap!(can.into_normal());
 
     unsafe {
         NVIC::unmask(embassy_stm32::pac::Interrupt::FDCAN1_IT0);
