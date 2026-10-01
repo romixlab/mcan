@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-use core::num::{NonZeroU8, NonZeroU16};
 use cortex_m::peripheral::NVIC;
 use defmt::*;
 use embassy_executor::Spawner;
@@ -60,12 +59,7 @@ async fn main(_spawner: Spawner) {
     let can = unwrap!(can_instances.take_enabled(mcan::FdCanInstance::FdCan1));
 
     let mut can = unwrap!(can.into_config_mode());
-    can.set_nominal_bit_timing(NominalBitTiming {
-        prescaler: unwrap!(NonZeroU16::new(1)),
-        seg1: unwrap!(NonZeroU8::new(55)),
-        seg2: unwrap!(NonZeroU8::new(8)),
-        sync_jump_width: unwrap!(NonZeroU8::new(1)),
-    });
+    can.set_nominal_bit_timing(unwrap!(NominalBitTiming::new(1, 55, 8, 1)));
     debug!("layout: {:#?}", layout_fdcan1);
     unwrap!(can.set_layout(layout_fdcan1));
 

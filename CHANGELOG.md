@@ -21,10 +21,16 @@ All notable changes to this crate are recorded here, newest first. The format fo
 - Host tests for the register map (`src/pac/tests.rs`): offsets and bit positions from RM0468 / RM0444 for the
   FDCAN and RCC registers in use. (Q1, P7a)
 - Host tests for the message RAM builder and layout. (Q1, R1, R6)
+- Transceiver delay compensation: `TransceiverDelayCompensation` (offset, filter window, `at_sample_point`)
+  enabled with `DataBitTiming::with_tdc`, written to DBTP.TDC and TDCR. (T2)
+- Host tests for bit timing validation and NBTP / DBTP / TDCR encoding. (Q1, T1, T2)
 - `MessageRamBuilderError::TriggerMemoryNotSupported`: trigger memory can only be allocated for FDCAN1. (R1)
 
 ### Changed
 
+- **Breaking:** `NominalBitTiming` and `DataBitTiming` are built with `const fn new(…) -> Result<_, BitTimingError>`,
+  taking plain integers instead of public `NonZero` fields, and are validated against the RM ranges. The
+  `transceiver_delay_compensation: bool` field is replaced by `with_tdc`. (T1, T2)
 - **Breaking:** `set_layout` and `apply_config` return `Result` and reject a layout built for another instance
   (`Error::WrongInstance`). (R2)
 - **Breaking:** `MessageRamLayout::relayout()` and `MessageRamBuilder::recombine()` removed (they were `todo!()`). (R3)
@@ -42,6 +48,9 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- Bit timing values at the top of their range (e.g. nominal prescaler 512, seg1 256) were masked to 0 and
+  underflowed on `- 1` (panic in debug, garbage in release). Out-of-range values are now rejected. (T1)
+- DBTP.TDC / TDCR were never written, so transceiver delay compensation could not be enabled. (T2)
 - Message RAM builder used byte offsets for word-addressed start fields, so every region after the first
   was placed 4× too far. (R1)
 - Dedicated TX buffer `idx` ignored the element size, so buffers > 0 overlapped buffer 0. (R6, X1)

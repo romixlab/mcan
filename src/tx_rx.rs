@@ -220,15 +220,10 @@ impl<M: Transmit> FdCan<M> {
             let Some(chunk) = chunks.next() else {
                 break;
             };
-            let word = if chunk.len() == 4 {
-                let word: [u8; 4] = chunk.try_into().expect("length is 4");
-                u32::from_le_bytes(word)
-            } else {
-                let mut word = [0u8; 4];
-                word[..chunk.len()].copy_from_slice(chunk);
-                u32::from_le_bytes(word)
-            };
-            *d = word;
+            // The last chunk may be shorter than 4 bytes, pad it with zeros.
+            let mut word = [0u8; 4];
+            word[..chunk.len()].copy_from_slice(chunk);
+            *d = u32::from_le_bytes(word);
         }
 
         // Set as ready to transmit

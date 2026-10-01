@@ -16,7 +16,7 @@ pub mod id;
 mod message_ram_layout;
 pub mod tx_rx;
 
-pub use config::{DataBitTiming, NominalBitTiming};
+pub use config::{BitTimingError, DataBitTiming, NominalBitTiming, TransceiverDelayCompensation};
 pub use fdcan::{
     ConfigMode, Error, FdCan, FdCanInstance, FdCanInstances, FdCanInterrupt, InternalLoopbackMode,
     PoweredDownMode,

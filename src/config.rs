@@ -7,120 +7,270 @@ use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
 #[cfg(feature = "h7")]
 use crate::message_ram_layout::MessageRamLayout;
 use crate::pac::fdcan::regs::Ils;
-use core::num::{NonZeroU8, NonZeroU16};
 
-/// Configures the bit timings.
+/// Why a [NominalBitTiming] or [DataBitTiming] was rejected.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum BitTimingError {
+    PrescalerOutOfRange,
+    Seg1OutOfRange,
+    Seg2OutOfRange,
+    SyncJumpWidthOutOfRange,
+    /// The synchronisation jump width must not exceed seg2 (ISO 11898-1: SJW <= phase segment 2).
+    SyncJumpWidthLongerThanSeg2,
+    /// Transceiver delay compensation needs a data prescaler of 1 or 2 (ST AN5348, Bosch M_CAN user manual,
+    /// "Transmitter Delay Compensation").
+    TdcPrescalerTooLarge,
+    /// TDC offset or filter window above 127 minimum time quanta.
+    TdcOutOfRange,
+}
+
+const fn in_range(value: u16, min: u16, max: u16) -> bool {
+    value >= min && value <= max
+}
+
+/// Nominal (arbitration phase) bit timing, written to NBTP.
 ///
-/// You can use <http://www.bittiming.can-wiki.info/> to calculate the `btr` parameter. Enter
-/// parameters as follows:
+/// All values are actual lengths in time quanta (the register holds the value minus one). One bit is
+/// `1 + seg1 + seg2` time quanta of `prescaler` kernel clock periods, and the sample point lies after
+/// `1 + seg1` quanta. Ranges (RM0468 / RM0444 FDCAN_NBTP): prescaler 1..=512, seg1 2..=256,
+/// seg2 1..=128, sync_jump_width 1..=128 and at most seg2.
 ///
-/// - *Clock Rate*: The input clock speed to the CAN peripheral (*not* the CPU clock speed).
-///   This is the clock rate of the peripheral bus the CAN peripheral is attached to (eg. APB1).
-/// - *Sample Point*: Should normally be left at the default value of 87.5%.
-/// - *SJW*: Should normally be left at the default value of 1.
-///
-/// Then copy the `CAN_BUS_TIME` register value from the table and pass it as the `btr`
-/// parameter to this method.
-#[derive(Clone, Copy, Debug)]
+/// <http://www.bittiming.can-wiki.info/> can compute values: enter the FDCAN kernel clock (not the CPU
+/// clock) and use seg1 = Prop_Seg + Phase_Seg1, seg2 = Phase_Seg2.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct NominalBitTiming {
-    /// Value by which the oscillator frequency is divided for generating the bit time quanta. The bit
-    /// time is built up from a multiple of this quanta. Valid values are 1 to 512.
-    pub prescaler: NonZeroU16,
-    /// Valid values are 1 to 128.
-    pub seg1: NonZeroU8,
-    /// Valid values are 1 to 255.
-    pub seg2: NonZeroU8,
-    /// Valid values are 1 to 128.
-    pub sync_jump_width: NonZeroU8,
+    prescaler: u16,
+    seg1: u16,
+    seg2: u8,
+    sync_jump_width: u8,
 }
+
 impl NominalBitTiming {
-    #[inline]
-    pub(crate) fn nbrp(&self) -> u16 {
-        u16::from(self.prescaler) & 0x1FF
+    pub const fn new(
+        prescaler: u16,
+        seg1: u16,
+        seg2: u8,
+        sync_jump_width: u8,
+    ) -> Result<Self, BitTimingError> {
+        if !in_range(prescaler, 1, 512) {
+            return Err(BitTimingError::PrescalerOutOfRange);
+        }
+        if !in_range(seg1, 2, 256) {
+            return Err(BitTimingError::Seg1OutOfRange);
+        }
+        if !in_range(seg2 as u16, 1, 128) {
+            return Err(BitTimingError::Seg2OutOfRange);
+        }
+        if !in_range(sync_jump_width as u16, 1, 128) {
+            return Err(BitTimingError::SyncJumpWidthOutOfRange);
+        }
+        if sync_jump_width > seg2 {
+            return Err(BitTimingError::SyncJumpWidthLongerThanSeg2);
+        }
+        Ok(Self {
+            prescaler,
+            seg1,
+            seg2,
+            sync_jump_width,
+        })
     }
-    #[inline]
-    pub(crate) fn ntseg1(&self) -> u8 {
-        u8::from(self.seg1)
+
+    pub const fn prescaler(&self) -> u16 {
+        self.prescaler
     }
-    #[inline]
-    pub(crate) fn ntseg2(&self) -> u8 {
-        u8::from(self.seg2) & 0x7F
+    pub const fn seg1(&self) -> u16 {
+        self.seg1
     }
-    #[inline]
-    pub(crate) fn nsjw(&self) -> u8 {
-        u8::from(self.sync_jump_width) & 0x7F
+    pub const fn seg2(&self) -> u8 {
+        self.seg2
+    }
+    pub const fn sync_jump_width(&self) -> u8 {
+        self.sync_jump_width
+    }
+
+    /// Time quanta per bit.
+    pub const fn quanta_per_bit(&self) -> u16 {
+        1 + self.seg1 + self.seg2 as u16
+    }
+
+    /// NBTP register value. Validated in [new](Self::new), so the `- 1`s cannot underflow.
+    pub(crate) fn nbtp(&self) -> crate::pac::fdcan::regs::Nbtp {
+        let mut r = crate::pac::fdcan::regs::Nbtp(0);
+        r.set_nbrp(self.prescaler - 1);
+        r.set_ntseg1((self.seg1 - 1) as u8);
+        r.set_ntseg2(self.seg2 - 1);
+        r.set_nsjw(self.sync_jump_width - 1);
+        r
     }
 }
 
 impl Default for NominalBitTiming {
+    /// 500 kbit/s at an 8 MHz kernel clock (16 quanta, sample point 75 %). NBTP = 0x0600_0A03.
     #[inline]
     fn default() -> Self {
-        // Kernel Clock 8MHz, Bit rate: 500kbit/s. Corresponds to a NBTP
-        // register value of 0x0600_0A03
         Self {
-            prescaler: NonZeroU16::new(1).unwrap(),
-            seg1: NonZeroU8::new(11).unwrap(),
-            seg2: NonZeroU8::new(4).unwrap(),
-            sync_jump_width: NonZeroU8::new(4).unwrap(),
+            prescaler: 1,
+            seg1: 11,
+            seg2: 4,
+            sync_jump_width: 4,
         }
     }
 }
 
-/// Configures the data bit timings for the FdCan Variable Bitrates.
-/// This is not used when frame_transmit is set to anything other than AllowFdCanAndBRS.
-#[derive(Clone, Copy, Debug)]
+/// Transceiver delay compensation for the data phase (TDCR, DBTP.TDC).
+///
+/// At high data bit rates the transceiver loop delay exceeds the sample point, so the transmitter
+/// samples its own bits at a secondary sample point: measured delay + `offset`. Both values are in
+/// minimum time quanta (kernel clock periods), 0..=127. `filter_window` (TDCF) ignores dominant edges
+/// shorter than it when measuring the delay, 0 disables it. See the Bosch M_CAN user manual,
+/// "Transmitter Delay Compensation", and ST AN5348.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct TransceiverDelayCompensation {
+    offset: u8,
+    filter_window: u8,
+}
+
+impl TransceiverDelayCompensation {
+    pub const fn new(offset: u8, filter_window: u8) -> Result<Self, BitTimingError> {
+        if offset > 127 || filter_window > 127 {
+            return Err(BitTimingError::TdcOutOfRange);
+        }
+        Ok(Self {
+            offset,
+            filter_window,
+        })
+    }
+
+    pub const fn offset(&self) -> u8 {
+        self.offset
+    }
+    pub const fn filter_window(&self) -> u8 {
+        self.filter_window
+    }
+
+    /// TDC with the secondary sample point at the data phase sample point, the usual choice
+    /// (offset = prescaler * (1 + seg1)), no filter window.
+    pub const fn at_sample_point(dbtr: &DataBitTiming) -> Result<Self, BitTimingError> {
+        // prescaler <= 32, seg1 <= 32, no overflow.
+        let offset = dbtr.prescaler as u16 * (1 + dbtr.seg1 as u16);
+        if offset > 127 {
+            return Err(BitTimingError::TdcOutOfRange);
+        }
+        Self::new(offset as u8, 0)
+    }
+
+    pub(crate) fn tdcr(&self) -> crate::pac::fdcan::regs::Tdcr {
+        let mut r = crate::pac::fdcan::regs::Tdcr(0);
+        r.set_tdco(self.offset);
+        r.set_tdcf(self.filter_window);
+        r
+    }
+}
+
+/// Data phase bit timing for CAN FD with bit rate switching, written to DBTP (and TDCR).
+/// Not used unless frame_transmit allows BRS.
+///
+/// Same conventions as [NominalBitTiming]. Ranges (RM0468 / RM0444 FDCAN_DBTP): prescaler 1..=32,
+/// seg1 1..=32, seg2 1..=16, sync_jump_width 1..=16 and at most seg2.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct DataBitTiming {
-    /// Tranceiver Delay Compensation
-    pub transceiver_delay_compensation: bool,
-    ///  The value by which the oscillator frequency is divided to generate the bit time quanta. The bit
-    ///  time is built up from a multiple of this quanta. Valid values for the Baud Rate Prescaler are 1
-    ///  to 31.
-    pub prescaler: NonZeroU8,
-    /// Valid values are 1 to 31.
-    pub seg1: NonZeroU8,
-    /// Valid values are 1 to 15.
-    pub seg2: NonZeroU8,
-    /// Must always be smaller than DTSEG2, valid values are 1 to 15.
-    pub sync_jump_width: NonZeroU8,
+    prescaler: u8,
+    seg1: u8,
+    seg2: u8,
+    sync_jump_width: u8,
+    tdc: Option<TransceiverDelayCompensation>,
 }
+
 impl DataBitTiming {
-    // #[inline]
-    // fn tdc(&self) -> u8 {
-    //     let tsd = self.transceiver_delay_compensation as u8;
-    //     //TODO: stm32g4 does not export the TDC field
-    //     todo!()
-    // }
-    #[inline]
-    pub(crate) fn dbrp(&self) -> u8 {
-        u8::from(self.prescaler) & 0x1F
+    pub const fn new(
+        prescaler: u8,
+        seg1: u8,
+        seg2: u8,
+        sync_jump_width: u8,
+    ) -> Result<Self, BitTimingError> {
+        if !in_range(prescaler as u16, 1, 32) {
+            return Err(BitTimingError::PrescalerOutOfRange);
+        }
+        if !in_range(seg1 as u16, 1, 32) {
+            return Err(BitTimingError::Seg1OutOfRange);
+        }
+        if !in_range(seg2 as u16, 1, 16) {
+            return Err(BitTimingError::Seg2OutOfRange);
+        }
+        if !in_range(sync_jump_width as u16, 1, 16) {
+            return Err(BitTimingError::SyncJumpWidthOutOfRange);
+        }
+        if sync_jump_width > seg2 {
+            return Err(BitTimingError::SyncJumpWidthLongerThanSeg2);
+        }
+        Ok(Self {
+            prescaler,
+            seg1,
+            seg2,
+            sync_jump_width,
+            tdc: None,
+        })
     }
-    #[inline]
-    pub(crate) fn dtseg1(&self) -> u8 {
-        u8::from(self.seg1) & 0x1F
+
+    /// Enables transceiver delay compensation. Requires a prescaler of 1 or 2.
+    pub const fn with_tdc(
+        mut self,
+        tdc: TransceiverDelayCompensation,
+    ) -> Result<Self, BitTimingError> {
+        if self.prescaler > 2 {
+            return Err(BitTimingError::TdcPrescalerTooLarge);
+        }
+        self.tdc = Some(tdc);
+        Ok(self)
     }
-    #[inline]
-    pub(crate) fn dtseg2(&self) -> u8 {
-        u8::from(self.seg2) & 0x0F
+
+    pub const fn prescaler(&self) -> u8 {
+        self.prescaler
     }
-    #[inline]
-    pub(crate) fn dsjw(&self) -> u8 {
-        u8::from(self.sync_jump_width) & 0x0F
+    pub const fn seg1(&self) -> u8 {
+        self.seg1
+    }
+    pub const fn seg2(&self) -> u8 {
+        self.seg2
+    }
+    pub const fn sync_jump_width(&self) -> u8 {
+        self.sync_jump_width
+    }
+    pub const fn tdc(&self) -> Option<TransceiverDelayCompensation> {
+        self.tdc
+    }
+
+    /// Time quanta per bit.
+    pub const fn quanta_per_bit(&self) -> u16 {
+        1 + self.seg1 as u16 + self.seg2 as u16
+    }
+
+    /// DBTP register value. Validated in [new](Self::new), so the `- 1`s cannot underflow.
+    pub(crate) fn dbtp(&self) -> crate::pac::fdcan::regs::Dbtp {
+        let mut r = crate::pac::fdcan::regs::Dbtp(0);
+        r.set_dbrp(self.prescaler - 1);
+        r.set_dtseg1(self.seg1 - 1);
+        r.set_dtseg2(self.seg2 - 1);
+        r.set_dsjw(self.sync_jump_width - 1);
+        r.set_tdc(self.tdc.is_some());
+        r
     }
 }
 
 impl Default for DataBitTiming {
+    /// 500 kbit/s at an 8 MHz kernel clock (16 quanta, sample point 75 %), no TDC. DBTP = 0x0000_0A33.
     #[inline]
     fn default() -> Self {
-        // Kernel Clock 8MHz, Bit rate: 500kbit/s. Corresponds to a DBTP
-        // register value of 0x0000_0A33
         Self {
-            transceiver_delay_compensation: false,
-            prescaler: NonZeroU8::new(1).unwrap(),
-            seg1: NonZeroU8::new(11).unwrap(),
-            seg2: NonZeroU8::new(4).unwrap(),
-            sync_jump_width: NonZeroU8::new(4).unwrap(),
+            prescaler: 1,
+            seg1: 11,
+            seg2: 4,
+            sync_jump_width: 4,
+            tdc: None,
         }
     }
 }
@@ -615,42 +765,22 @@ impl FdCan<ConfigMode> {
         Ok(())
     }
 
-    /// Configures the bit timings.
-    ///
-    /// You can use <http://www.bittiming.can-wiki.info/> to calculate the `btr` parameter. Enter
-    /// parameters as follows:
-    ///
-    /// - *Clock Rate*: The input clock speed to the CAN peripheral (*not* the CPU clock speed).
-    ///   This is the clock rate of the peripheral bus the CAN peripheral is attached to (e.g., APB1).
-    /// - *Sample Point*: Should normally be left at the default value of 87.5%.
-    /// - *SJW*: Should normally be left at the default value of 1.
-    ///
-    /// Then copy the `CAN_BUS_TIME` register value from the table and pass it as the `btr`
-    /// parameter to this method.
+    /// Configures the nominal (arbitration phase) bit timing. See [NominalBitTiming].
     #[inline]
     pub fn set_nominal_bit_timing(&mut self, btr: NominalBitTiming) {
         self.config.nbtr = btr;
-
-        self.can.nbtp().write(|w| {
-            w.set_nbrp(btr.nbrp() - 1);
-            w.set_ntseg1(btr.ntseg1() - 1);
-            w.set_ntseg2(btr.ntseg2() - 1);
-            w.set_nsjw(btr.nsjw() - 1);
-        });
+        self.can.nbtp().write_value(btr.nbtp());
     }
 
-    /// Configures the data bit timings for the FdCan Variable Bitrates.
-    /// This is not used when frame_transmit is set to anything other than AllowFdCanAndBRS.
+    /// Configures the data phase bit timing and transceiver delay compensation. See [DataBitTiming].
+    /// Only used when frame_transmit allows bit rate switching.
     #[inline]
     pub fn set_data_bit_timing(&mut self, btr: DataBitTiming) {
         self.config.dbtr = btr;
-
-        self.can.dbtp().write(|w| {
-            w.set_dbrp(btr.dbrp() - 1);
-            w.set_dtseg1(btr.dtseg1() - 1);
-            w.set_dtseg2(btr.dtseg2() - 1);
-            w.set_dsjw(btr.dsjw() - 1);
-        });
+        self.can.dbtp().write_value(btr.dbtp());
+        if let Some(tdc) = btr.tdc() {
+            self.can.tdcr().write_value(tdc.tdcr());
+        }
     }
 
     /// Enables or disables automatic retransmission of messages
@@ -823,5 +953,112 @@ impl FdCan<ConfigMode> {
             });
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nominal_ranges() {
+        use BitTimingError::*;
+        assert!(NominalBitTiming::new(512, 256, 128, 128).is_ok());
+        assert!(NominalBitTiming::new(1, 2, 1, 1).is_ok());
+        assert_eq!(NominalBitTiming::new(0, 11, 4, 4), Err(PrescalerOutOfRange));
+        assert_eq!(
+            NominalBitTiming::new(513, 11, 4, 4),
+            Err(PrescalerOutOfRange)
+        );
+        assert_eq!(NominalBitTiming::new(1, 1, 4, 4), Err(Seg1OutOfRange));
+        assert_eq!(NominalBitTiming::new(1, 257, 4, 4), Err(Seg1OutOfRange));
+        assert_eq!(NominalBitTiming::new(1, 11, 0, 1), Err(Seg2OutOfRange));
+        assert_eq!(NominalBitTiming::new(1, 11, 129, 4), Err(Seg2OutOfRange));
+        assert_eq!(
+            NominalBitTiming::new(1, 11, 4, 0),
+            Err(SyncJumpWidthOutOfRange)
+        );
+        assert_eq!(
+            NominalBitTiming::new(1, 11, 4, 5),
+            Err(SyncJumpWidthLongerThanSeg2)
+        );
+    }
+
+    /// Register holds value - 1 (RM0468 FDCAN_NBTP: NSJW [31:25], NBRP [24:16], NTSEG1 [15:8], NTSEG2 [6:0]).
+    #[test]
+    fn nominal_register_encoding() {
+        assert_eq!(NominalBitTiming::default().nbtp().0, 0x0600_0A03);
+        let max = NominalBitTiming::new(512, 256, 128, 128).unwrap().nbtp();
+        assert_eq!(max.0, 0xFFFF_FF7F);
+        let min = NominalBitTiming::new(1, 2, 1, 1).unwrap().nbtp();
+        assert_eq!(min.0, 0x0000_0100);
+        assert_eq!(NominalBitTiming::default().quanta_per_bit(), 16);
+    }
+
+    #[test]
+    fn data_ranges() {
+        use BitTimingError::*;
+        assert!(DataBitTiming::new(32, 32, 16, 16).is_ok());
+        assert!(DataBitTiming::new(1, 1, 1, 1).is_ok());
+        assert_eq!(DataBitTiming::new(0, 11, 4, 4), Err(PrescalerOutOfRange));
+        assert_eq!(DataBitTiming::new(33, 11, 4, 4), Err(PrescalerOutOfRange));
+        assert_eq!(DataBitTiming::new(1, 0, 4, 4), Err(Seg1OutOfRange));
+        assert_eq!(DataBitTiming::new(1, 33, 4, 4), Err(Seg1OutOfRange));
+        assert_eq!(DataBitTiming::new(1, 11, 17, 4), Err(Seg2OutOfRange));
+        assert_eq!(
+            DataBitTiming::new(1, 11, 4, 0),
+            Err(SyncJumpWidthOutOfRange)
+        );
+        assert_eq!(
+            DataBitTiming::new(1, 11, 4, 5),
+            Err(SyncJumpWidthLongerThanSeg2)
+        );
+    }
+
+    /// RM0468 FDCAN_DBTP: TDC [23], DBRP [20:16], DTSEG1 [12:8], DTSEG2 [7:4], DSJW [3:0].
+    #[test]
+    fn data_register_encoding() {
+        assert_eq!(DataBitTiming::default().dbtp().0, 0x0000_0A33);
+        let max = DataBitTiming::new(32, 32, 16, 16).unwrap().dbtp();
+        assert_eq!(max.0, 0x001F_1FFF);
+        let tdc = TransceiverDelayCompensation::new(5, 0).unwrap();
+        let with_tdc = DataBitTiming::default().with_tdc(tdc).unwrap();
+        assert_eq!(with_tdc.dbtp().0, 0x0080_0A33);
+    }
+
+    /// RM0468 FDCAN_TDCR: TDCO [14:8], TDCF [6:0].
+    #[test]
+    fn tdc() {
+        let tdc = TransceiverDelayCompensation::new(127, 3).unwrap();
+        assert_eq!(tdc.tdcr().0, 0x7F03);
+        assert_eq!(
+            TransceiverDelayCompensation::new(128, 0),
+            Err(BitTimingError::TdcOutOfRange)
+        );
+        assert_eq!(
+            TransceiverDelayCompensation::new(0, 128),
+            Err(BitTimingError::TdcOutOfRange)
+        );
+
+        // 5 Mbit/s at 80 MHz: 16 quanta, sample point after 1 + 11 quanta.
+        let dbtr = DataBitTiming::new(1, 11, 4, 4).unwrap();
+        let tdc = TransceiverDelayCompensation::at_sample_point(&dbtr).unwrap();
+        assert_eq!((tdc.offset(), tdc.filter_window()), (12, 0));
+        let dbtr = DataBitTiming::new(2, 31, 8, 8).unwrap();
+        assert_eq!(
+            TransceiverDelayCompensation::at_sample_point(&dbtr)
+                .unwrap()
+                .offset(),
+            64
+        );
+        let dbtr = DataBitTiming::new(4, 31, 8, 8).unwrap();
+        assert_eq!(
+            TransceiverDelayCompensation::at_sample_point(&dbtr),
+            Err(BitTimingError::TdcOutOfRange)
+        );
+        assert_eq!(
+            dbtr.with_tdc(TransceiverDelayCompensation::new(10, 0).unwrap()),
+            Err(BitTimingError::TdcPrescalerTooLarge)
+        );
     }
 }
