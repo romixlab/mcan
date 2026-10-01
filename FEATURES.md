@@ -138,7 +138,7 @@ To do:
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| X1 | Dedicated TX buffers (allocate via builder, write + pend, re-pend) | 🟡 Partial | ○ | ● | – | Addresses fixed (R1/R6), not yet verified on hardware. Doesn't check TXBRP before overwriting a pending buffer. H7 only. |
+| X1 | Dedicated TX buffers (allocate via builder, write + pend, re-pend) | 🟡 Partial | ○ | ● | – | Addresses fixed (R1/R6); smoke-tested: examples/h7_embassy `loopback` (internal loopback, 6 IDs × 4 lengths, classic CAN, 1 Mbit/s) passed on B135B 2026-10-01. Doesn't check TXBRP before overwriting a pending buffer. H7 only. |
 | X2 | TX FIFO / priority queue transmit | ⬜ Not started | ● | ● | – | Only commented-out code ported from `fdcan`. |
 | X3 | Abort transmission (blocking) | 🟡 Partial | ○ | ● | – | `abort_blocking` exists. Async abort and multi-buffer abort are missing. |
 | X4 | TX completion tracking / backpressure (per-buffer waker, TXBTO/TXBCF) | ⬜ Not started | ● | ○ | – | Needed for host notifications on analyzers. Model to consider: hansihe/mcan `TxRef` (generation counters). |
@@ -153,7 +153,7 @@ To do:
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| Y1 | RX FIFO 0/1 read + acknowledge | 🟡 Partial | ● | ● | H | H7: `receive_fifo(RxFifo, &mut buf)` reads the element at FxGI (header: ID, RTR, FDF, BRS, ESI, DLC length, timestamp, filter index / non-matching), copies the data and acknowledges via FxAI. `BufferTooSmall` leaves the frame in the FIFO; truncation by a too-small element is reported. `rx_fifo_fill_level`. Host tests: element layout, DLC mapping, element addressing, header decoding. Missing: lite cores (R5), HIL. Smoke test: `examples/h7_embassy` `loopback` bin (not run yet). |
+| Y1 | RX FIFO 0/1 read + acknowledge | 🟡 Partial | ● | ● | H | H7: `receive_fifo(RxFifo, &mut buf)` reads the element at FxGI (header: ID, RTR, FDF, BRS, ESI, DLC length, timestamp, filter index / non-matching), copies the data and acknowledges via FxAI. `BufferTooSmall` leaves the frame in the FIFO; truncation by a too-small element is reported. `rx_fifo_fill_level`. Host tests: element layout, DLC mapping, element addressing, header decoding. Missing: lite cores (R5), HIL harness test. Smoke test: examples/h7_embassy `loopback` (internal loopback, 6 IDs × 4 lengths, classic CAN, 1 Mbit/s) passed on B135B 2026-10-01. |
 | Y2 | Dedicated RX buffers (NDAT1/2) | ⬜ Not started | ○ | ● | – | Builder allocates them, nothing reads them. H7 only. |
 | Y3 | Async receive | ⬜ Not started | ● | ● | – | ISR wakes `rx_dedicated_waker` on DRX, but nothing awaits it. |
 | Y4 | RX FIFO watermark (FWM, RFxW interrupt) | ⬜ Not started | ● | ● | – | |
@@ -216,7 +216,7 @@ To do:
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| D1 | H7 + embassy (`examples/h7_embassy`, STM32H725IG, B135 pinout) | 🟡 Partial | – | – | – | Builds on stable with up-to-date embassy. Runs on B135A/B. B125 would need FDCAN1 TX on PD1 instead of PB9. `simple`: sends via a dedicated buffer (addresses fixed with R1/R6, not re-tested on hardware). `loopback`: internal loopback TX → RX FIFO0 over 6 IDs × 4 lengths, logs PASS/FAIL (not run on hardware yet, needs only board + probe). |
+| D1 | H7 + embassy (`examples/h7_embassy`, STM32H725IG, B135 pinout) | 🟡 Partial | – | – | – | Builds on stable with up-to-date embassy. Runs on B135A/B. B125 would need FDCAN1 TX on PD1 instead of PB9. `simple`: sends via a dedicated buffer (addresses fixed with R1/R6, not re-tested on hardware). `loopback`: internal loopback TX → RX FIFO0 over 6 IDs × 4 lengths, logs PASS/FAIL: **passed on B135B** (2026-10-01). |
 | D2 | G0 example (NUCLEO-G0B1RE) | ⬜ Not started | – | – | – | Blocked by P2. |
 | D2a | H5 example (NUCLEO-H533RE) | ⬜ Not started | – | – | – | Blocked by P4a. |
 | D3 | H7 + RTIC, H7 + stm32h7xx-hal, G4, L5, advanced (analyzer) examples | 💭 Idea | – | – | – | |
