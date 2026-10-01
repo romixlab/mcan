@@ -877,6 +877,8 @@ impl FdCan<ConfigMode> {
     /// Configures the global filter settings
     #[inline]
     pub fn set_global_filter(&mut self, filter: GlobalFilter) {
+        // Stored so that `leave_init_mode` (which re-applies `self.config`) keeps it.
+        self.config.global_filter = filter;
         #[cfg(feature = "h7")]
         self.can.gfc().modify(|w| {
             w.set_anfs(filter.handle_standard_frames as u8);

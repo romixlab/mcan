@@ -47,6 +47,7 @@ its relevance for analyzers vs. nodes, and its test coverage.
 | `boards/` | HIL test board pinouts and hardware notes (one file per `BnnnR` board number) |
 | `tools/netlist.py` | KiCad netlist inspector used to extract board pinouts |
 | `tools/gen-pac/` | Rust generator for `src/pac` from a pinned stm32-metapac (own `Cargo.lock`, `-- --check` to verify) |
+| `hil/<board>/` | HIL test crates (embedded-test + probe-rs), own `Cargo.lock`, toolchain and `.cargo/config.toml`. Run with `cargo test` from the crate directory |
 | `examples/h7_embassy/` | Separate crate (own `Cargo.lock`, toolchain and `.cargo/config.toml`) for STM32H725IG |
 
 ## Building
@@ -65,6 +66,10 @@ cargo run --manifest-path tools/gen-pac/Cargo.toml -- --check
 
 # Example (run from its directory, it pins its own target and runner)
 cd examples/h7_embassy && cargo build
+
+# HIL tests (board + probe attached, see Testing below)
+cd hil/b135 && cargo build --tests   # always
+cd hil/b135 && cargo test            # with the board connected
 ```
 
 Keep the library warning-free once the dead code is gone. Don't add `#[allow]` just to silence warnings about
@@ -119,9 +124,12 @@ it.
 
 - Prepare HIL tests **while you work**: every new or fixed hardware-facing feature gets a HIL test in the same
   change, even if it can't be run right away.
-- Planned harness: a test crate per board under `hil/` (e.g. `hil/h7/`), using
+- Harness: a test crate per board under `hil/` (`hil/b135` exists), using
   [`embedded-test`](https://crates.io/crates/embedded-test) with `probe-rs` as the runner, so `cargo test`
-  flashes and runs the tests on the target.
+  flashes and runs the tests on the target, resetting it before every test. Board bring-up and helpers live in
+  the crate's `src/lib.rs`. Keep the embedded-test / probe-rs version pair recorded in FEATURES.md Q3.
+  embedded-test only covers rigs on one MCU; board ↔ board and reference-node tests (Q5a, Q6) will need a
+  host-orchestrated runner.
 - Rigs, from simplest to most capable (FEATURES.md Q4–Q6):
   1. Board + probe only: internal / external loopback.
   1a. Single-wire CAN without transceivers (Nucleos: FDCAN1 ↔ FDCAN2, or across boards).

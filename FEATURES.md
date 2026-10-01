@@ -127,18 +127,18 @@ To do:
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| R1 | Const RAM layout builder (typestate, per instance) | ✅ Done | ● | ● | H | Works in 32-bit words throughout (start address fields are word offsets), the whole RAM (2560 words) is usable, every instance starts from an empty layout (dedicated TX buffer count no longer leaks into the next instance), the layout records its instance and RAM region, trigger memory only on FDCAN1. Errors instead of panics on overflow. |
+| R1 | Const RAM layout builder (typestate, per instance) | ✅ Done | ● | ● | H, HIL (B135B) | Works in 32-bit words throughout (start address fields are word offsets), the whole RAM (2560 words) is usable, every instance starts from an empty layout (dedicated TX buffer count no longer leaks into the next instance), the layout records its instance and RAM region, trigger memory only on FDCAN1. Errors instead of panics on overflow. HIL: every `hil/b135` `loopback` test uses a different layout. |
 | R2 | Apply layout to registers (`set_layout`) | 🟡 Partial | ● | ● | – | Writes start addresses / sizes / element sizes; rejects a layout built for another instance (`WrongInstance`); TTTMC only on FDCAN1. Missing: FIFO watermark (X4), FIFO mode (X5), TX FIFO vs queue mode (TFQM), TX event FIFO watermark. |
 | R3 | Re-layout one instance / recombine layouts | ⬜ Not started | ○ | ○ | – | The `todo!()` stubs `relayout()` / `recombine()` were removed. Layouts now carry their region (`start_addr..end_addr`), which a re-layout can build on. |
 | R4 | Zero message RAM (ECC init), only the instance's own region | ✅ Done | ● | ● | H (G0 region) | H7: `set_layout` zeroes the layout's region when the layout changes (re-applying the same layout on mode transitions keeps filters / TX buffers written in Config mode). Lite: entering Config zeroes the instance's fixed 212-word block (FDCAN2 at +0x350, matches stm32-data). Needs HIL (two instances, Q5). Open: `FDCAN_MSGRAM_LEN_WORDS = 512` on G0 vs. 2 × 212 used words, check against RM0444. |
 | R5 | G0/G4 fixed layout support | ⬜ Not started | ○ | ● | – | `MessageRam` for non-H7 is an empty stub. |
-| R6 | Bounds-checked element access helpers | 🟡 Partial | ● | ● | H | Dedicated TX buffers: offset = start + idx × element size, index and instance checked. RX/filter/event accessors missing (come with Y1, F2, X5). |
+| R6 | Bounds-checked element access helpers | 🟡 Partial | ● | ● | H, HIL (B135B) | Dedicated TX buffers and RX FIFO elements: offset = start + idx × element size, index (and instance for TX) checked. Filter / RX buffer / TX event accessors missing (come with F2, Y2, X5). |
 
 ## 4. Transmit
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| X1 | Dedicated TX buffers (allocate via builder, write + pend, re-pend) | 🟡 Partial | ○ | ● | – | Addresses fixed (R1/R6); smoke-tested: examples/h7_embassy `loopback` (internal loopback, 6 IDs × 4 lengths, classic CAN, 1 Mbit/s) passed on B135B 2026-10-01. Doesn't check TXBRP before overwriting a pending buffer. H7 only. |
+| X1 | Dedicated TX buffers (allocate via builder, write + pend, re-pend) | 🟡 Partial | ○ | ● | HIL (B135B) | Addresses fixed (R1/R6). HIL: `hil/b135` `loopback` sends every frame through a dedicated buffer. Doesn't check TXBRP before overwriting a pending buffer. H7 only. |
 | X2 | TX FIFO / priority queue transmit | ⬜ Not started | ● | ● | – | Only commented-out code ported from `fdcan`. |
 | X3 | Abort transmission (blocking) | 🟡 Partial | ○ | ● | – | `abort_blocking` exists. Async abort and multi-buffer abort are missing. |
 | X4 | TX completion tracking / backpressure (per-buffer waker, TXBTO/TXBCF) | ⬜ Not started | ● | ○ | – | Needed for host notifications on analyzers. Model to consider: hansihe/mcan `TxRef` (generation counters). |
@@ -147,25 +147,25 @@ To do:
 | X7 | Transmit pause (TXP) | ✅ Done | ● | ● | – | |
 | X8 | Disable automatic retransmission (DAR) | ✅ Done | ● | ● | – | |
 | X9 | Remote frames (RTR) | ⬜ Not started | ○ | ○ | – | Always sends data frames. |
-| X10 | FD frames, BRS, ESI | 🟡 Partial | ● | ● | – | Header fields exist. Not verified on hardware because of X1. |
+| X10 | FD frames, BRS, ESI | 🟡 Partial | ● | ● | HIL (B135B) | FD frames of every length (0–64 bytes) with and without BRS at 1 / 4 Mbit/s pass in internal loopback (`hil/b135` `loopback` `fd_lengths_with_and_without_brs`). ESI not tested (needs an error-passive node). Not yet across real transceivers (Q5). |
 
 ## 5. Receive
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| Y1 | RX FIFO 0/1 read + acknowledge | 🟡 Partial | ● | ● | H | H7: `receive_fifo(RxFifo, &mut buf)` reads the element at FxGI (header: ID, RTR, FDF, BRS, ESI, DLC length, timestamp, filter index / non-matching), copies the data and acknowledges via FxAI. `BufferTooSmall` leaves the frame in the FIFO; truncation by a too-small element is reported. `rx_fifo_fill_level`. Host tests: element layout, DLC mapping, element addressing, header decoding. Missing: lite cores (R5), HIL harness test. Smoke test: examples/h7_embassy `loopback` (internal loopback, 6 IDs × 4 lengths, classic CAN, 1 Mbit/s) passed on B135B 2026-10-01. |
+| Y1 | RX FIFO 0/1 read + acknowledge | 🟡 Partial | ● | ● | H, HIL (B135B) | H7: `receive_fifo(RxFifo, &mut buf)` reads the element at FxGI (header: ID, RTR, FDF, BRS, ESI, DLC length, timestamp, filter index / non-matching), copies the data and acknowledges via FxAI. `BufferTooSmall` leaves the frame in the FIFO; truncation by a too-small element is reported. `rx_fifo_fill_level`. Host tests: element layout, DLC mapping, element addressing, header decoding. HIL (`hil/b135` `loopback`): classic IDs × 0–8 bytes, FD lengths, FIFO1 via global filter, short buffer, truncation. Missing: lite cores (R5), B135A / B125 runs. |
 | Y2 | Dedicated RX buffers (NDAT1/2) | ⬜ Not started | ○ | ● | – | Builder allocates them, nothing reads them. H7 only. |
 | Y3 | Async receive | ⬜ Not started | ● | ● | – | ISR wakes `rx_dedicated_waker` on DRX, but nothing awaits it. |
 | Y4 | RX FIFO watermark (FWM, RFxW interrupt) | ⬜ Not started | ● | ● | – | |
 | Y5 | RX FIFO blocking vs overwrite mode (FOM, Bosch MCAN p. 80) | ⬜ Not started | ○ | ● | – | Analyzers must keep up with any load; nodes may prefer overwrite. |
-| Y6 | Overrun / message-lost detection (RFxL) | 🟡 Partial | ● | ● | – | `take_rx_fifo_message_lost` reads and clears IR.RFxL (H7). Unreliable while I1 clears every IR flag in the ISR. No counter yet (E6). |
+| Y6 | Overrun / message-lost detection (RFxL) | 🟡 Partial | ● | ● | HIL (B135B) | `take_rx_fifo_message_lost` reads and clears IR.RFxL (H7). HIL: a full 4-element FIFO in blocking mode keeps the first 4 frames and flags the 5th as lost (`hil/b135` `loopback` `full_fifo_loses_frame`, interrupts not unmasked). Unreliable while I1 clears every IR flag in the ISR. No counter yet (E6). |
 | Y7 | All IDs are received (every standard ID, extended ID sweep) | ⬜ Not started | ● | ● | – | The embassy fork misses ID 0x125. Needs Y1 + filters + a HIL sweep test. |
 
 ## 6. Filters
 
 | ID | Feature | Status | An | No | Tests | Notes |
 |---|---|---|---|---|---|---|
-| F1 | Global filter (non-matching std/ext, reject remote) | ✅ Done | ● | ● | – | H7 GFC. Lite cores use RXGFC: not handled. |
+| F1 | Global filter (non-matching std/ext, reject remote) | ✅ Done | ● | ● | HIL (B135B) | H7 GFC, lite RXGFC. Fixed 2026-10-01: `set_global_filter` didn't store the filter in the config, so the next mode transition re-applied the old one (found by `hil/b135` `loopback` `global_filter_routes_to_fifo1`). Reject-remote not tested. |
 | F2 | Standard ID filter elements | ⬜ Not started | ○ | ● | – | Bitfield types exist in `pac/message_ram.rs`, unused. |
 | F3 | Extended ID filter elements + XIDAM mask | ⬜ Not started | ○ | ● | – | |
 | F4 | High-priority message handling (HPM, HPMS) | 💭 Idea | ○ | ○ | – | |
@@ -227,8 +227,8 @@ To do:
 |---|---|---|---|
 | Q1 | Host unit tests (`cargo test` on the host target) | 🟡 Partial | Register map tests (`src/pac/tests.rs`: offsets and bit positions from RM0468 / RM0444, for `h7`, `g0`, with and without `rcc`), RAM builder and layout (`message_ram_builder.rs`, `message_ram_layout.rs`), bit timing validation and NBTP/DBTP/TDCR encoding (`config.rs`), RX/TX element bitfields and DLC mapping (`pac/message_ram.rs`), RX header decoding (`tx_rx.rs`). Next: `Dlc::from_len`, IDs, filter elements. |
 | Q2 | Host coverage measurement (`cargo llvm-cov`) | ⬜ Not started | `cargo-llvm-cov` is not installed yet. |
-| Q3 | HIL test harness (probe-rs + `embedded-test`) | ⬜ Not started | One harness crate per test board (see *Test boards*) under `hil/`, named after the board number (all revisions of one board share a crate; revision selected by a cargo feature; board-ID resistors are not trusted for now): `hil/b125`, `hil/b129`, `hil/b135`, `hil/nucleo_g0b1re`, `hil/nucleo_h533re`. |
-| Q4 | HIL rig: internal / external loopback | ⬜ Not started | Needs only a board + probe. Runs on every test board. |
+| Q3 | HIL test harness (probe-rs + `embedded-test`) | 🟡 Partial | `hil/b135` exists: embedded-test 0.7.2 with probe-rs 0.32 (pin the pair; embedded-test must match the probe-rs protocol), sync tests, target reset before every test. Run with `cd hil/b135 && cargo test`. Still to create, one crate per board, named after the board number (all revisions of one board share a crate; revision selected by a cargo feature; board-ID resistors are not trusted for now): `hil/b125`, `hil/b129`, `hil/nucleo_g0b1re`, `hil/nucleo_h533re`. embedded-test covers rigs on one MCU (Q4, Q4a, Q5). Board ↔ board (Q5a) and the external reference node (Q6) need a host-orchestrated runner (host test binary driving probe-rs + SocketCAN, firmware as responder). |
+| Q4 | HIL rig: internal / external loopback | 🟡 Partial | Internal loopback on B135B: `hil/b135/tests/loopback.rs`, 6 tests, all pass (2026-10-01). Missing: external loopback (drives the bus, needs an isolated bus), B135A, B125, other families. |
 | Q5 | HIL rig: two instances on one board wired through transceivers | ⬜ Not started | B125 Ch1 (FDCAN1) ↔ Ch2 (FDCAN3) over a DE-9 cable carrying CAN_H, CAN_L **and GND** (the channels are isolated from each other). This also covers two instances sharing the message RAM (R4). Alternatively two B135s on one bus. Terminators are switchable on both boards. Possible on the Nucleos too, with two external transceivers. Real bus: arbitration, errors, bus-off (short CANH/CANL), DAR, TXP. |
 | Q4a | HIL rig: single-wire CAN without transceivers | ⬜ Not started | Wired-AND bus with a pull-up and open-drain TX (or diodes), see [boards/nucleo.md](boards/nucleo.md). FDCAN1 ↔ FDCAN2 on one Nucleo (G0B1, H533), or across boards: B135B FDCAN3 on J203, B129 FDCAN2 on its headers. Needs open-drain TX pin config. Limited bit rates. |
 | Q5a | HIL rig: board ↔ board over transceivers | ⬜ Not started | Mixed families on one bus: B129 (G0, lite) ↔ B125/B135 (H7) with a Pico-Lock ↔ DE-9 adapter. B129 has no terminator, so enable a B125/B135 relay. Later H5 ↔ H7 via single wire. |

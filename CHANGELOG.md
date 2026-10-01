@@ -24,6 +24,8 @@ All notable changes to this crate are recorded here, newest first. The format fo
 - RX FIFO receive (H7): `receive_fifo(RxFifo, &mut buf)` returns an `RxFrameHeader` (ID, RTR, FD/BRS/ESI, length,
   timestamp, filter index) and the copied length, and acknowledges the element. Also `rx_fifo_fill_level` and
   `take_rx_fifo_message_lost`. (Y1, Y6)
+- `hil/b135`: first HIL test crate (embedded-test 0.7.2 + probe-rs 0.32). Internal loopback tests for classic and
+  FD frames, FIFO1 routing, FIFO overflow, short buffers and truncation; all pass on B135B. (Q3, Q4)
 - `examples/h7_embassy` `loopback` bin: internal loopback TX → RX smoke test. (D1)
 - Transceiver delay compensation: `TransceiverDelayCompensation` (offset, filter window, `at_sample_point`)
   enabled with `DataBitTiming::with_tdc`, written to DBTP.TDC and TDCR. (T2)
@@ -52,6 +54,8 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- `set_global_filter` didn't store the filter in the config, so leaving Config mode re-applied the previous
+  one. (F1)
 - Message RAM bitfield decoders no longer contain `unreachable!()`. (P8)
 - Bit timing values at the top of their range (e.g. nominal prescaler 512, seg1 256) were masked to 0 and
   underflowed on `- 1` (panic in debug, garbage in release). Out-of-range values are now rejected. (T1)
