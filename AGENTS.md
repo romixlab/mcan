@@ -64,6 +64,14 @@ unfinished features.
   checked after regeneration. Don't assume the register map is correct for lite cores (G0/G4/L5/H5).
 - Cite the reference manual (Bosch M_CAN user manual page, or ST RM section) in comments for non-obvious
   register behaviour.
+- Statistics and event counting use the [`cnt`](https://crates.io/crates/cnt) crate (published version
+  from crates.io), both in the driver and in tests/HIL. Don't hand-roll counter structs or atomics.
+  - Driver: declare events as a `#[derive(cnt::Count)]` enum and take a `&'static cnt::Counters<E>` per
+    instance (cnt *Instance counters*), so the firmware names and places them (e.g. `fdcan1`, `fdcan3`).
+    Counting is ISR-safe and lock-free, so it is fine in `on_interrupt`. Users opt out with cnt's `disabled`
+    feature. Tracked as FEATURES.md E6.
+  - HIL: read the counters (`counters_ram_buffer()` on target, or `cnt read` from the host) to assert that
+    no unexpected errors / lost frames / overruns happened during a test. Tracked as FEATURES.md Q9.
 - Dependencies: keep them current, record bumps in FEATURES.md (P11), and re-build the example after every
   bump.
 

@@ -179,6 +179,7 @@ To do:
 | E3 | Bus-off management / recovery task (Bosch MCAN p. 28) | ⬜ Not started | ● | ● | – | Clearing INIT while running; must not require a typestate transition. See embassy `automatic_bus_off_recovery`, hansihe/mcan `wait_bus_off`. |
 | E4 | Protocol exception handling (PXHD) | ✅ Done | ○ | ○ | – | |
 | E5 | Message RAM ECC/parity errors (BEC/BEU) | ⬜ Not started | ○ | ○ | – | |
+| E6 | Driver statistics via the `cnt` crate (per-instance `cnt::Counters<E>`: RX/TX frames, FIFO overruns / lost messages, error / bus-off events, …) | ⬜ Not started | ● | ○ | – | Use cnt *Instance counters* (`#[derive(cnt::Count)]` event enum, `&'static Counters<E>` passed in by the firmware), no hand-rolled counters. ISR-safe, lock-free. Users can compile them out with cnt's `disabled` feature. |
 
 ## 9. Bit timing
 
@@ -223,6 +224,7 @@ To do:
 | Q6 | HIL rig: external reference node (USB-CAN / SocketCAN on the host) | ⬜ Not started | Analyzer load tests, ID sweep (Y7), FD + BRS interop, timestamps against a known source. |
 | Q7 | On-target coverage (e.g. `minicov`) | 💭 Idea | |
 | Q8 | CI: build matrix of all chip / feature combinations + clippy | ⬜ Not started | |
+| Q9 | Use `cnt` counters in tests / HIL | ⬜ Not started | HIL tests read the driver's `cnt` counters (E6) via `counters_ram_buffer()` or `cnt read` and assert no unexpected errors / lost frames / overruns. Test-only counters also use `cnt`. |
 
 ---
 
