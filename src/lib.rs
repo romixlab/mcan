@@ -24,9 +24,10 @@ pub use fdcan::{
 pub use id::{ExtendedId, Id, StandardId};
 #[cfg(feature = "h7")]
 pub use message_ram_builder::{MessageRamBuilder, MessageRamBuilderError, RamBuilderInitialState};
+pub use message_ram_layout::RxFifo;
 #[cfg(feature = "h7")]
 pub use message_ram_layout::{DataFieldSize, MessageRamLayout, TxBufferIdx};
-pub use tx_rx::TxFrameHeader;
+pub use tx_rx::{RxFrameHeader, TxFrameHeader};
 
 #[cfg(feature = "rcc")]
 // we must wait two peripheral clock cycles before the clock is active

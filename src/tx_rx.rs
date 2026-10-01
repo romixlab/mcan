@@ -1,9 +1,17 @@
 use crate::Id;
+#[cfg(feature = "h7")]
+use crate::fdcan::Receive;
 use crate::fdcan::Transmit;
+#[cfg(feature = "h7")]
+use crate::message_ram_layout::RxFifo;
 use crate::message_ram_layout::TxBufferIdx;
 use crate::pac::message_ram::{Esi, FrameFormat};
+#[cfg(feature = "h7")]
+use crate::pac::message_ram::{RxElementR0, RxElementR1, Xtd, dlc_to_len};
 use crate::util::checked_wait;
 use crate::{Error, FdCan};
+#[cfg(feature = "h7")]
+use crate::{ExtendedId, StandardId};
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -322,85 +330,128 @@ impl<M: Transmit> FdCan<M> {
     pub fn clear_transmission_cancelled_flag(&mut self) {
         self.can.ir().write(|w| w.set_tcf(true));
     }
+}
 
-    // Returns a received frame if available.
-    //
-    // Returns `Err` when a frame was lost due to buffer overrun.
-    //
-    // # Panics
-    //
-    // Panics if `buffer` is smaller than the header length.
-    // pub fn try_receive_any(
-    //     &mut self,
-    //     buffer: &mut [u8],
-    // ) -> nb::Result<ReceiveOverrun<RxFrameInfo>, Infallible> {
-    //     if !self.rx_fifo_is_empty() {
-    //         let mbox = self.get_rx_mailbox();
-    //         let idx: usize = mbox.into();
-    //         let mailbox: &RxFifoElement = &self.rx_msg_ram().fxsa[idx];
-    //
-    //         let header: RxFrameInfo = (&mailbox.header).into();
-    //         for (i, register) in mailbox.data.iter().enumerate() {
-    //             let register_value = register.read();
-    //             let register_bytes =
-    //                 unsafe { slice::from_raw_parts(&register_value as *const u32 as *const u8, 4) };
-    //             let num_bytes = (header.len as usize) - i * 4;
-    //             if num_bytes <= 4 {
-    //                 buffer[i * 4..i * 4 + num_bytes].copy_from_slice(&register_bytes[..num_bytes]);
-    //                 break;
-    //             }
-    //             buffer[i * 4..(i + 1) * 4].copy_from_slice(register_bytes);
-    //         }
-    //         self.release_mailbox(mbox);
-    //
-    //         if self.has_overrun() {
-    //             Ok(ReceiveOverrun::<RxFrameInfo>::Overrun(header))
-    //         } else {
-    //             Ok(ReceiveOverrun::<RxFrameInfo>::NoOverrun(header))
-    //         }
-    //     } else {
-    //         Err(nb::Error::WouldBlock)
-    //     }
-    // }
-    //
-    // #[inline]
-    // fn has_overrun(&self, fifo_nr: FIFONr) -> bool {
-    //     self.can.rxfs(fifo_nr.nr()).read().rfl()
-    // }
+/// Header of a received frame.
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct RxFrameHeader {
+    pub id: Id,
+    /// Remote frame (classic CAN only).
+    pub rtr: bool,
+    pub frame_format: FrameFormat,
+    /// Data phase was sent with bit rate switching.
+    pub bit_rate_switching: bool,
+    /// The transmitter was error passive (ESI bit).
+    pub error_passive: bool,
+    /// Data length from the DLC, in bytes.
+    pub len: u8,
+    /// The RX element was smaller than `len`; only the configured data size was stored and copied.
+    pub truncated: bool,
+    /// Raw RX timestamp (RXTS), see FEATURES.md S1–S4.
+    pub timestamp: u16,
+    /// Index of the matching filter element, `None` for accepted non-matching frames.
+    pub filter_index: Option<u8>,
+}
 
-    // Returns if the fifo contains any new messages.
-    // #[inline]
-    // pub fn rx_fifo_is_empty(&self) -> bool {
-    //     let can = self.registers();
-    //     match FIFONR::NR {
-    //         0 => can.rxf0s.read().f0fl().bits() == 0,
-    //         1 => can.rxf1s.read().f1fl().bits() == 0,
-    //         _ => unreachable!(),
-    //     }
-    // }
+#[cfg(feature = "h7")]
+impl RxFrameHeader {
+    pub(crate) fn from_element(r0: RxElementR0, r1: RxElementR1, truncated: bool) -> Self {
+        let id = match r0.xtd() {
+            // SAFETY: masked to 11 / 29 bits.
+            Xtd::ElevenBits => {
+                Id::Standard(unsafe { StandardId::new_unchecked(((r0.id() >> 18) & 0x7FF) as u16) })
+            }
+            Xtd::TwentyNineBits => {
+                Id::Extended(unsafe { ExtendedId::new_unchecked(r0.id() & 0x1FFF_FFFF) })
+            }
+        };
+        Self {
+            id,
+            rtr: r0.rtr(),
+            frame_format: r1.fdf(),
+            bit_rate_switching: r1.brs(),
+            error_passive: r0.esi(),
+            len: dlc_to_len(r1.dlc(), r1.fdf()),
+            truncated,
+            timestamp: r1.rxts(),
+            filter_index: if r1.anmf() { None } else { Some(r1.fidx()) },
+        }
+    }
+}
 
-    // #[inline]
-    // fn release_mailbox(&mut self, idx: Mailbox) {
-    //     unsafe {
-    //         (*I::MSG_RAM).receive[FIFONR::NR].fxsa[idx as u8 as usize].reset();
-    //     }
-    //
-    //     let can = self.registers();
-    //     match FIFONR::NR {
-    //         0 => can.rxf0a.write(|w| unsafe { w.f0ai().bits(idx.into()) }),
-    //         1 => can.rxf1a.write(|w| unsafe { w.f1ai().bits(idx.into()) }),
-    //         _ => unreachable!(),
-    //     }
-    // }
+#[cfg(feature = "h7")]
+impl<M: Receive> FdCan<M> {
+    /// Takes the oldest frame out of an RX FIFO and copies its data into `buf`.
+    ///
+    /// Returns `Ok(None)` if the FIFO is empty, and the header plus the number of bytes written to `buf`
+    /// otherwise (`min(len, element data size)`). If `buf` is too short, returns [Error::BufferTooSmall] and
+    /// leaves the frame in the FIFO.
+    ///
+    /// Reads the element at RXFxS.FxGI and acknowledges it via RXFxA.FxAI, which frees it and advances the
+    /// get index (RM0468 FDCAN "Rx FIFOs", Bosch M_CAN user manual "Rx FIFOs").
+    pub fn receive_fifo(
+        &mut self,
+        fifo: RxFifo,
+        buf: &mut [u8],
+    ) -> Result<Option<(RxFrameHeader, usize)>, Error> {
+        let status = self.can.rxfs(fifo.nr()).read();
+        if status.ffl() == 0 {
+            return Ok(None);
+        }
+        let idx = status.fgi();
+        let (r0, r1, copied, truncated) =
+            self.message_ram().read_rx_fifo_element(fifo, idx, buf)?;
+        self.can.rxfa(fifo.nr()).write(|w| w.set_fai(idx));
+        Ok(Some((
+            RxFrameHeader::from_element(r0, r1, truncated),
+            copied as usize,
+        )))
+    }
 
-    // #[inline]
-    // fn get_rx_mailbox(&self) -> Mailbox {
-    //     let can = self.registers();
-    //     let idx = match FIFONR::NR {
-    //         0 => can.rxf0s.read().f0gi().bits(),
-    //         1 => can.rxf1s.read().f1gi().bits(),
-    //         _ => unreachable!(),
-    //     };
-    //     Mailbox::new(idx)
-    // }
+    /// Number of frames waiting in an RX FIFO.
+    #[inline]
+    pub fn rx_fifo_fill_level(&self, fifo: RxFifo) -> u8 {
+        self.can.rxfs(fifo.nr()).read().ffl()
+    }
+
+    /// Returns whether a frame was lost because the RX FIFO was full (IR.RFxL) and clears the flag.
+    #[inline]
+    pub fn take_rx_fifo_message_lost(&mut self, fifo: RxFifo) -> bool {
+        let lost = self.can.ir().read().rfl(fifo.nr());
+        if lost {
+            self.can.ir().write(|w| w.set_rfl(fifo.nr(), true));
+        }
+        lost
+    }
+}
+
+#[cfg(all(test, feature = "h7"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rx_header_standard_id() {
+        let r0 = RxElementR0::from_bits(0x125 << 18);
+        let r1 = RxElementR1::from_bits(3 << 24 | 8 << 16 | 0x1234);
+        let h = RxFrameHeader::from_element(r0, r1, false);
+        assert_eq!(h.id, Id::Standard(StandardId::new(0x125).unwrap()));
+        assert!(!h.rtr && !h.error_passive && !h.bit_rate_switching && !h.truncated);
+        assert!(matches!(h.frame_format, FrameFormat::Classic));
+        assert_eq!(h.len, 8);
+        assert_eq!(h.timestamp, 0x1234);
+        assert_eq!(h.filter_index, Some(3));
+    }
+
+    #[test]
+    fn rx_header_extended_fd() {
+        let r0 = RxElementR0::from_bits(1 << 31 | 1 << 30 | 0x1FFF_FFFF);
+        let r1 = RxElementR1::from_bits(1 << 31 | 1 << 21 | 1 << 20 | 15 << 16);
+        let h = RxFrameHeader::from_element(r0, r1, true);
+        assert_eq!(h.id, Id::Extended(ExtendedId::MAX));
+        assert!(h.error_passive && h.bit_rate_switching && h.truncated);
+        assert!(matches!(h.frame_format, FrameFormat::FD));
+        assert_eq!(h.len, 64);
+        assert_eq!(h.filter_index, None);
+    }
 }

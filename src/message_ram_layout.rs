@@ -2,6 +2,8 @@ use crate::pac::common::{RW, Reg};
 use crate::pac::message_ram::{
     EventFIFOControl, Rtr, TimeStampCaptureEnable, TxBufferElementT0, TxBufferElementT1,
 };
+#[cfg(feature = "h7")]
+use crate::pac::message_ram::{RxElementR0, RxElementR1, dlc_to_len};
 use crate::tx_rx::{Dlc, TxFrameHeader};
 use crate::{Error, FdCan, FdCanInstance};
 use core::ops::Range;
@@ -93,6 +95,31 @@ impl MessageRamLayout {
     pub(crate) fn region(&self) -> Range<usize> {
         let end = (self.end_addr as usize).min(crate::pac::FDCAN_MSGRAM_LEN_WORDS);
         (self.start_addr as usize).min(end)..end
+    }
+
+    /// Word offset of element `idx` of an RX FIFO and its data size, `None` if it doesn't exist in this layout.
+    pub(crate) const fn rx_fifo_element_addr(
+        &self,
+        fifo: RxFifo,
+        idx: u8,
+    ) -> Option<(u16, DataFieldSize)> {
+        let (addr, len, size) = match fifo {
+            RxFifo::Fifo0 => (
+                self.rx_fifo0_addr,
+                self.rx_fifo0_len,
+                self.rx_fifo0_data_size,
+            ),
+            RxFifo::Fifo1 => (
+                self.rx_fifo1_addr,
+                self.rx_fifo1_len,
+                self.rx_fifo1_data_size,
+            ),
+        };
+        if idx >= len {
+            return None;
+        }
+        // At most 64 elements of 18 words, no overflow.
+        Some((addr + idx as u16 * size.element_words(), size))
     }
 
     /// Word offset of the dedicated TX buffer `idx`, `None` if it doesn't exist in this layout.
@@ -206,16 +233,20 @@ impl TxBufferIdx {
     }
 }
 
-pub enum FIFONr {
-    FIFO0,
-    FIFO1,
+/// One of the two RX FIFOs.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum RxFifo {
+    Fifo0,
+    Fifo1,
 }
 
-impl FIFONr {
-    pub(crate) fn nr(&self) -> usize {
+impl RxFifo {
+    /// Index into the RXFxS / RXFxA register arrays.
+    pub(crate) const fn nr(&self) -> usize {
         match self {
-            FIFONr::FIFO0 => 0,
-            FIFONr::FIFO1 => 1,
+            RxFifo::Fifo0 => 0,
+            RxFifo::Fifo1 => 1,
         }
     }
 }
@@ -264,6 +295,35 @@ impl<'a> MessageRam<'a> {
                 data: core::slice::from_raw_parts_mut(tx_buffer_t0.add(2), tx_buffers_len),
             })
         }
+    }
+
+    /// Reads RX FIFO element `idx`: header words and up to `buf.len()` data bytes.
+    /// Returns the two header words, the number of bytes copied and whether the element was too small for
+    /// the frame (data truncated by the M_CAN).
+    pub(crate) fn read_rx_fifo_element(
+        &self,
+        fifo: RxFifo,
+        idx: u8,
+        buf: &mut [u8],
+    ) -> Result<(RxElementR0, RxElementR1, u8, bool), Error> {
+        let Some((offset, data_size)) = self.layout.rx_fifo_element_addr(fifo, idx) else {
+            return Err(Error::RxFifoIndexOutOfRange);
+        };
+        // SAFETY: the offset lies inside this instance's layout, which lies inside the message RAM.
+        let element = unsafe { crate::pac::FDCAN_MSGRAM_ADDR.add(offset as usize) };
+        let r0 = RxElementR0::from_bits(unsafe { element.read_volatile() });
+        let r1 = RxElementR1::from_bits(unsafe { element.add(1).read_volatile() });
+        let len = dlc_to_len(r1.dlc(), r1.fdf());
+        // If the element is smaller than the frame, the M_CAN stores only what fits.
+        let stored = len.min(data_size.max_len());
+        if buf.len() < stored as usize {
+            return Err(Error::BufferTooSmall);
+        }
+        for (i, chunk) in buf[..stored as usize].chunks_mut(4).enumerate() {
+            let word = unsafe { element.add(2 + i).read_volatile() }.to_le_bytes();
+            chunk.copy_from_slice(&word[..chunk.len()]);
+        }
+        Ok((r0, r1, stored, stored < len))
     }
 
     // pub(crate) tx_fifo_put()

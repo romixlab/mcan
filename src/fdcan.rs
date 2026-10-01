@@ -99,7 +99,11 @@ pub enum Error {
     /// or tried to use TxBufferIdx from one CAN instance with another.
     WrongInstance,
     TxBufferIndexOutOfRange,
+    /// The RX FIFO get index points outside the FIFO configured in the layout.
+    RxFifoIndexOutOfRange,
     WrongDataSize,
+    /// The buffer passed to a receive function is shorter than the received data. The frame stays in the FIFO.
+    BufferTooSmall,
 }
 
 pub(crate) enum LoopbackMode {

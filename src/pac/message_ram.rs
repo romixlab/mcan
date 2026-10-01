@@ -20,10 +20,10 @@ macro_rules! enum_bit {
             }
 
             const fn from_bits(value: u8) -> Self {
-                match value {
+                // Single-bit field, only bit 0 can be set.
+                match value & 1 {
                     0 => $name::$zero_name,
-                    1 => $name::$one_name,
-                    _ => unreachable!(),
+                    _ => $name::$one_name,
                 }
             }
         }
@@ -112,12 +112,11 @@ impl StandardFilterType {
     }
 
     const fn from_bits(value: u8) -> StandardFilterType {
-        match value {
+        match value & 0b11 {
             0b00 => StandardFilterType::Range,
             0b01 => StandardFilterType::DualID,
             0b10 => StandardFilterType::Classic,
-            0b11 => StandardFilterType::Disabled,
-            _ => unreachable!(),
+            _ => StandardFilterType::Disabled,
         }
     }
 }
@@ -149,7 +148,7 @@ impl StandardFilterConfiguration {
     }
 
     const fn from_bits(value: u8) -> StandardFilterConfiguration {
-        match value {
+        match value & 0b111 {
             0b000 => StandardFilterConfiguration::Disable,
             0b001 => StandardFilterConfiguration::StoreInFIFO0,
             0b010 => StandardFilterConfiguration::StoreInFIFO1,
@@ -157,8 +156,7 @@ impl StandardFilterConfiguration {
             0b100 => StandardFilterConfiguration::SetPriority,
             0b101 => StandardFilterConfiguration::SetPriorityAndStoreInFIFO0,
             0b110 => StandardFilterConfiguration::SetPriorityAndStoreInFIFO1,
-            0b111 => StandardFilterConfiguration::StoreAsDebugMessage,
-            _ => unreachable!(),
+            _ => StandardFilterConfiguration::StoreAsDebugMessage,
         }
     }
 }
@@ -257,5 +255,123 @@ impl From<bool> for BitRateSwitch {
         } else {
             BitRateSwitch::Without
         }
+    }
+}
+
+/// Rx Buffer and FIFO element, first word (Bosch M_CAN user manual, "Rx Buffer and FIFO Element";
+/// RM0468 / RM0444 FDCAN "Rx buffer and FIFO element"). Same layout on full and lite cores.
+#[bitfield(u32, order = Msb, debug = false, defmt = cfg(feature = "defmt"))]
+pub(crate) struct RxElementR0 {
+    /// Error State Indicator: 1 = transmitting node is error passive.
+    #[bits(1)]
+    pub esi: bool,
+    #[bits(1)]
+    pub xtd: Xtd,
+    /// Remote frame (classic CAN only).
+    #[bits(1)]
+    pub rtr: bool,
+    /// A standard identifier is stored in ID 28:18.
+    #[bits(29)]
+    pub id: u32,
+}
+
+/// Rx Buffer and FIFO element, second word.
+#[bitfield(u32, order = Msb, debug = false, defmt = cfg(feature = "defmt"))]
+pub(crate) struct RxElementR1 {
+    /// Accepted Non-matching Frame: 1 = no filter matched, FIDX is invalid.
+    #[bits(1)]
+    pub anmf: bool,
+    /// Filter Index of the matching filter element.
+    #[bits(7)]
+    pub fidx: u8,
+    #[bits(2)]
+    _reserved: u8,
+    #[bits(1)]
+    pub fdf: FrameFormat,
+    /// Frame received with bit rate switching.
+    #[bits(1)]
+    pub brs: bool,
+    #[bits(4)]
+    pub dlc: u8,
+    /// Rx timestamp (TSCV at start of frame, or external timestamp).
+    #[bits(16)]
+    pub rxts: u16,
+}
+
+/// Data length in bytes for a DLC. Classic frames carry at most 8 bytes, DLC 9..=15 still means 8
+/// (ISO 11898-1); CAN FD maps 9..=15 to 12, 16, 20, 24, 32, 48, 64.
+// TODO(Y1): lite RX path (R5), then drop the cfg.
+#[cfg(any(feature = "h7", test))]
+pub(crate) const fn dlc_to_len(dlc: u8, format: FrameFormat) -> u8 {
+    match (dlc & 0x0F, format) {
+        (d @ 0..=8, _) => d,
+        (_, FrameFormat::Classic) => 8,
+        (9, FrameFormat::FD) => 12,
+        (10, FrameFormat::FD) => 16,
+        (11, FrameFormat::FD) => 20,
+        (12, FrameFormat::FD) => 24,
+        (13, FrameFormat::FD) => 32,
+        (14, FrameFormat::FD) => 48,
+        (_, FrameFormat::FD) => 64,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dlc_lengths() {
+        for dlc in 0..=8 {
+            assert_eq!(dlc_to_len(dlc, FrameFormat::Classic), dlc);
+            assert_eq!(dlc_to_len(dlc, FrameFormat::FD), dlc);
+        }
+        for dlc in 9..=15 {
+            assert_eq!(dlc_to_len(dlc, FrameFormat::Classic), 8);
+        }
+        let fd: [u8; 7] = core::array::from_fn(|i| dlc_to_len(9 + i as u8, FrameFormat::FD));
+        assert_eq!(fd, [12, 16, 20, 24, 32, 48, 64]);
+    }
+
+    /// Bit positions from the Bosch M_CAN "Rx Buffer and FIFO Element" table.
+    #[test]
+    fn rx_element_layout() {
+        let r0 = RxElementR0::from_bits(0xE000_0000 | (0x123 << 18));
+        assert!(r0.esi());
+        assert!(matches!(r0.xtd(), Xtd::TwentyNineBits));
+        assert!(r0.rtr());
+        assert_eq!(r0.id(), 0x123 << 18);
+
+        let r1 = RxElementR1::from_bits(
+            0x80 << 24 | 0x05 << 24 | 1 << 21 | 1 << 20 | 0xF << 16 | 0xBEEF,
+        );
+        assert!(r1.anmf());
+        assert_eq!(r1.fidx(), 5);
+        assert!(matches!(r1.fdf(), FrameFormat::FD));
+        assert!(r1.brs());
+        assert_eq!(r1.dlc(), 15);
+        assert_eq!(r1.rxts(), 0xBEEF);
+    }
+
+    /// TX element T0/T1 (Bosch M_CAN "Tx Buffer Element").
+    #[test]
+    fn tx_element_layout() {
+        let t0 = TxBufferElementT0::new()
+            .with_esi(Esi::EsiTransmittedRecessive)
+            .with_xtd(Xtd::ElevenBits)
+            .with_rtr(Rtr::TransmitDataFrame)
+            .with_id(0x7FF << 18);
+        assert_eq!(t0.into_bits(), 0x8000_0000 | 0x7FF << 18);
+        let t1 = TxBufferElementT1::new()
+            .with_message_marker_low(0xAB)
+            .with_efc(EventFIFOControl::StoreTxEvents)
+            .with_fdf(FrameFormat::FD)
+            .with_brs(BitRateSwitch::Switch)
+            .with_dlc(9)
+            .with_message_marker_high(0xCD);
+        assert_eq!(
+            t1.into_bits(),
+            0xAB << 24 | 1 << 23 | 1 << 21 | 1 << 20 | 9 << 16 | 0xCD << 8
+        );
     }
 }

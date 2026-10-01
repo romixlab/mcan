@@ -554,4 +554,40 @@ mod tests {
             Err(MessageRamBuilderError::TriggerMemoryNotSupported)
         ));
     }
+
+    #[test]
+    fn rx_fifo_element_addr_uses_element_size() {
+        use crate::message_ram_layout::RxFifo;
+        let (l, _, _) = example_layout(message_ram_builder()).ok().unwrap();
+        // FIFO0 at word 9, 3 elements of 2 + 16 words.
+        assert_eq!(
+            l.rx_fifo_element_addr(RxFifo::Fifo0, 0).map(|e| e.0),
+            Some(9)
+        );
+        assert_eq!(
+            l.rx_fifo_element_addr(RxFifo::Fifo0, 2).map(|e| e.0),
+            Some(9 + 36)
+        );
+        assert_eq!(l.rx_fifo_element_addr(RxFifo::Fifo0, 3), None);
+        // FIFO1 has no elements.
+        assert_eq!(l.rx_fifo_element_addr(RxFifo::Fifo1, 0), None);
+
+        let l = message_ram_builder()
+            .allocate_11bit_filters(0)
+            .and_then(|b| b.allocate_29bit_filters(0))
+            .and_then(|b| b.allocate_rx_fifo0_buffers(2, DataFieldSize::_8Bytes))
+            .and_then(|b| b.allocate_rx_fifo1_buffers(4, DataFieldSize::_12Bytes))
+            .map(|b| b.skip_dedicated_buffers())
+            .and_then(|b| b.allocate_tx_event_fifo_buffers(0))
+            .map(|b| b.tx_buffer_element_size(DataFieldSize::_8Bytes))
+            .and_then(|b| b.allocate_fifo_or_queue(0))
+            .and_then(|b| b.allocate_triggers(0))
+            .ok()
+            .unwrap()
+            .0;
+        assert_eq!(
+            l.rx_fifo_element_addr(RxFifo::Fifo1, 3),
+            Some((2 * 4 + 3 * 5, DataFieldSize::_12Bytes))
+        );
+    }
 }

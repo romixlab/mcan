@@ -21,6 +21,10 @@ All notable changes to this crate are recorded here, newest first. The format fo
 - Host tests for the register map (`src/pac/tests.rs`): offsets and bit positions from RM0468 / RM0444 for the
   FDCAN and RCC registers in use. (Q1, P7a)
 - Host tests for the message RAM builder and layout. (Q1, R1, R6)
+- RX FIFO receive (H7): `receive_fifo(RxFifo, &mut buf)` returns an `RxFrameHeader` (ID, RTR, FD/BRS/ESI, length,
+  timestamp, filter index) and the copied length, and acknowledges the element. Also `rx_fifo_fill_level` and
+  `take_rx_fifo_message_lost`. (Y1, Y6)
+- `examples/h7_embassy` `loopback` bin: internal loopback TX → RX smoke test. (D1)
 - Transceiver delay compensation: `TransceiverDelayCompensation` (offset, filter window, `at_sample_point`)
   enabled with `DataBitTiming::with_tdc`, written to DBTP.TDC and TDCR. (T2)
 - Host tests for bit timing validation and NBTP / DBTP / TDCR encoding. (Q1, T1, T2)
@@ -48,6 +52,7 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- Message RAM bitfield decoders no longer contain `unreachable!()`. (P8)
 - Bit timing values at the top of their range (e.g. nominal prescaler 512, seg1 256) were masked to 0 and
   underflowed on `- 1` (panic in debug, garbage in release). Out-of-range values are now rejected. (T1)
 - DBTP.TDC / TDCR were never written, so transceiver delay compensation could not be enabled. (T2)
@@ -65,5 +70,6 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Removed
 
+- **Breaking:** unused `FIFONr`, replaced by the public `RxFifo`. (Y1)
 - `paste` dependency (unmaintained, RUSTSEC-2024-0436). (P11)
 - Unused `src/pac/rcc_g4.rs`. The generator recreates it when G4 support starts (P3).
