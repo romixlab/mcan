@@ -5,6 +5,10 @@ H5, G0, G4 and L5. Today only H7 and (partially) G0 exist.
 It has no external PAC or HAL dependency: registers live in `src/pac` (generated from stm32-data). Optional
 async support is built on embassy-sync. Design goals are listed in [README.md](README.md).
 
+> **Temporary:** the crate is under heavy development. Breaking changes are not only acceptable but wanted
+> if they bring a better design: don't keep compatibility shims, deprecated aliases or awkward APIs just to
+> avoid a break. Still mark them **Breaking:** in CHANGELOG.md.
+
 ## FEATURES.md is the source of truth
 
 [FEATURES.md](FEATURES.md) lists every feature with its status (done / partial / broken / not started / idea),

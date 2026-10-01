@@ -3,6 +3,9 @@
 Feature status, plans and known bugs: see [FEATURES.md](FEATURES.md) (source of truth).
 Contributor / agent instructions: see [AGENTS.md](AGENTS.md).
 
+> **Note (temporary):** this crate is under heavy development. The API is not stable, and breaking changes
+> are not only acceptable but wanted whenever they lead to a better design.
+
 # Goals
 
 * Stand-alone, no external pac/hal dependencies (built-in RCC handling is optional, so it can also sit under a HAL)
