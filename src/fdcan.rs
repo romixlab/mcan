@@ -127,7 +127,7 @@ pub struct FdCanInstances {
 }
 
 /// FDCAN instance number as an enum
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum FdCanInstance {
     FdCan1,
@@ -175,8 +175,7 @@ impl FdCanInstances {
         let fdcan3_state = crate::asynchronous::state_fdcan3();
 
         #[cfg(feature = "h7")]
-        let ram_builder = crate::message_ram_builder::message_ram_builder()
-            .map_err(|_| Error::PeripheralTaken)?;
+        let ram_builder = crate::message_ram_builder::message_ram_builder();
 
         let mut s = Self::empty();
 
@@ -404,14 +403,17 @@ impl<M> FdCan<M> {
         Ok(())
     }
 
+    /// Zeroes `words` of the message RAM (word offsets). Callers pass only this instance's region: on H7
+    /// the RAM is shared and other instances may be running.
     #[inline]
-    fn zero_msg_ram(&mut self) {
+    pub(crate) fn zero_msg_ram(&mut self, words: core::ops::Range<usize>) {
         // In case the Message RAM is equipped with parity or ECC functionality, it is recommended
         // to initialize the Message RAM after hardware reset by writing e.g., 0x00000000 to each
         // Message RAM word to create valid parity/ECC checksums. This avoids it that reading from
         // uninitialized Message RAM sections will activate interrupt IR.BEC (Bit Error Corrected)
         // or IR.BEU (Bit Error Uncorrected)
-        for i in 0..FDCAN_MSGRAM_LEN_WORDS {
+        let end = words.end.min(FDCAN_MSGRAM_LEN_WORDS);
+        for i in words.start..end {
             unsafe {
                 let ptr = FDCAN_MSGRAM_ADDR.add(i);
                 core::ptr::write_volatile(ptr, 0x0000_0000);
@@ -487,7 +489,9 @@ impl FdCan<PoweredDownMode> {
         self.check_core()?;
         self.set_power_down_mode(false)?;
         self.enter_init_mode()?;
-        self.zero_msg_ram();
+        // H7 zeroes the instance's region in `set_layout`, once it is known. Lite cores have a fixed one.
+        #[cfg(not(feature = "h7"))]
+        self.zero_msg_ram(crate::message_ram_layout::lite_region(self.instance));
         Ok(())
     }
 }

@@ -726,7 +726,6 @@ dependencies = [
  "cortex-m",
  "defmt 1.1.1",
  "embassy-sync",
- "paste",
  "static_cell",
 ]
 
@@ -783,12 +782,6 @@ checksum = "fd402d00b0fb94c5aee000029204a46884b1262e0c443f166d86d2c0747e1a1a"
 dependencies = [
  "cortex-m",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pin-project-lite"

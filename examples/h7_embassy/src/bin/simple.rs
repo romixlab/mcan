@@ -67,7 +67,7 @@ async fn main(_spawner: Spawner) {
         sync_jump_width: unwrap!(NonZeroU8::new(1)),
     });
     debug!("layout: {:#?}", layout_fdcan1);
-    can.set_layout(layout_fdcan1);
+    unwrap!(can.set_layout(layout_fdcan1));
 
     //let mut can = unwrap!(can.into_internal_loopback());
     let mut can = unwrap!(can.into_normal());

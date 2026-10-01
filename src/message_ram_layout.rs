@@ -4,14 +4,21 @@ use crate::pac::message_ram::{
 };
 use crate::tx_rx::{Dlc, TxFrameHeader};
 use crate::{Error, FdCan, FdCanInstance};
+use core::ops::Range;
 
 /// Message RAM layout containing location and sizes of various buffers.
 ///
 /// Note: only if core supports it, for example, G0 and G4 have fixed layout.
 #[cfg(feature = "h7")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MessageRamLayout {
+    /// Instance this layout was built for, `None` for the empty default layout.
+    pub(crate) instance: Option<FdCanInstance>,
+    /// Region of the message RAM owned by this layout, in words: `start_addr..end_addr`.
+    pub(crate) start_addr: u16,
+    pub(crate) end_addr: u16,
+
     pub(crate) eleven_bit_filters_addr: u16,
     pub(crate) eleven_bit_filters_len: u8,
 
@@ -49,6 +56,9 @@ pub struct MessageRamLayout {
 impl MessageRamLayout {
     pub(crate) const fn default() -> Self {
         Self {
+            instance: None,
+            start_addr: 0,
+            end_addr: 0,
             eleven_bit_filters_addr: 0,
             eleven_bit_filters_len: 0,
             twenty_nine_bit_filters_addr: 0,
@@ -79,21 +89,39 @@ impl MessageRamLayout {
 
 #[cfg(feature = "h7")]
 impl MessageRamLayout {
-    // Turn this layout back into builder, useful if doing re-init of just one CAN instance, without touching others.
-    pub fn relayout(
-        self,
-    ) -> crate::message_ram_builder::MessageRamBuilder<
-        crate::message_ram_builder::RamBuilderInitialState,
-    > {
-        // pos: first non zero start, end: last non zero start+size?
-        todo!()
+    /// Message RAM words owned by this layout, clamped to the message RAM.
+    pub(crate) fn region(&self) -> Range<usize> {
+        let end = (self.end_addr as usize).min(crate::pac::FDCAN_MSGRAM_LEN_WORDS);
+        (self.start_addr as usize).min(end)..end
     }
+
+    /// Word offset of the dedicated TX buffer `idx`, `None` if it doesn't exist in this layout.
+    pub(crate) const fn tx_buffer_addr(&self, idx: u8) -> Option<u16> {
+        if idx >= self.tx_buffers_len {
+            return None;
+        }
+        // At most 32 elements of 18 words, no overflow.
+        Some(self.tx_buffers_addr + idx as u16 * self.tx_buffers_data_size.element_words())
+    }
+}
+
+/// Words of the fixed per-instance message RAM block on FDCAN lite cores: 28 standard filters (1 word),
+/// 8 extended filters (2), 2 RX FIFOs of 3 elements (18 each), 3 TX event elements (2) and 3 TX buffers (18).
+/// Instance n starts at n * 212 words (RM0444, FDCAN message RAM; stm32-data: FDCAN2 RAM at +0x350).
+#[cfg(not(feature = "h7"))]
+pub(crate) const LITE_INSTANCE_WORDS: usize = 28 + 8 * 2 + 2 * 3 * 18 + 3 * 2 + 3 * 18;
+
+/// Message RAM words owned by `instance` on FDCAN lite cores.
+#[cfg(not(feature = "h7"))]
+pub(crate) const fn lite_region(instance: FdCanInstance) -> Range<usize> {
+    let start = instance as usize * LITE_INSTANCE_WORDS;
+    start..start + LITE_INSTANCE_WORDS
 }
 
 /// Data size of RX FIFO0/1, RX buffer and TX buffer element, total element size is 8 bytes longer (2 words header).
 /// Should probably be all the same, and either 8 bytes or 64 bytes, unless some very specific configuration is desired.
 #[cfg(feature = "h7")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[repr(u8)]
 pub enum DataFieldSize {
@@ -127,6 +155,11 @@ impl DataFieldSize {
             DataFieldSize::_48Bytes => 12,
             DataFieldSize::_64Bytes => 16,
         }
+    }
+
+    /// Size of a whole RX buffer / RX FIFO / TX buffer element: 2 header words plus data.
+    pub(crate) const fn element_words(&self) -> u16 {
+        2 + self.words()
     }
 
     pub(crate) const fn config_register(&self) -> u8 {
@@ -216,10 +249,12 @@ impl TxBufferElement {
 #[cfg(feature = "h7")]
 impl<'a> MessageRam<'a> {
     pub(crate) fn tx_buffer(&self, idx: TxBufferIdx) -> Result<TxBufferElement, Error> {
-        if self.layout.tx_buffers_len == 0 || idx.idx >= self.layout.tx_buffers_len {
-            return Err(Error::TxBufferIndexOutOfRange);
+        if idx.instance != self.instance {
+            return Err(Error::WrongInstance);
         }
-        let offset = self.layout.tx_buffers_addr + idx.idx as u16;
+        let Some(offset) = self.layout.tx_buffer_addr(idx.idx) else {
+            return Err(Error::TxBufferIndexOutOfRange);
+        };
         let tx_buffers_len = self.layout.tx_buffers_data_size.words() as usize;
         unsafe {
             let tx_buffer_t0 = crate::pac::FDCAN_MSGRAM_ADDR.add(offset as usize);
@@ -252,5 +287,19 @@ impl<M> FdCan<M> {
         MessageRam {
             instance: self.instance,
         }
+    }
+}
+
+#[cfg(all(test, not(feature = "h7")))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lite_regions_are_disjoint_and_fit() {
+        assert_eq!(LITE_INSTANCE_WORDS, 212);
+        assert_eq!(lite_region(FdCanInstance::FdCan1), 0..212);
+        // stm32-data: FDCAN2 message RAM at 0x4000_B750 = 0x4000_B400 + 0x350 bytes.
+        assert_eq!(lite_region(FdCanInstance::FdCan2), 0x350 / 4..2 * 212);
+        assert!(lite_region(FdCanInstance::FdCan2).end <= crate::pac::FDCAN_MSGRAM_LEN_WORDS);
     }
 }

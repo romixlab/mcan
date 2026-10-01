@@ -20,9 +20,16 @@ All notable changes to this crate are recorded here, newest first. The format fo
 - `FdCanInstances::take()`: takes an instance without touching RCC. (M2)
 - Host tests for the register map (`src/pac/tests.rs`): offsets and bit positions from RM0468 / RM0444 for the
   FDCAN and RCC registers in use. (Q1, P7a)
+- Host tests for the message RAM builder and layout. (Q1, R1, R6)
+- `MessageRamBuilderError::TriggerMemoryNotSupported`: trigger memory can only be allocated for FDCAN1. (R1)
 
 ### Changed
 
+- **Breaking:** `set_layout` and `apply_config` return `Result` and reject a layout built for another instance
+  (`Error::WrongInstance`). (R2)
+- **Breaking:** `MessageRamLayout::relayout()` and `MessageRamBuilder::recombine()` removed (they were `todo!()`). (R3)
+- Message RAM is no longer zeroed as a whole on entering Config mode: H7 zeroes a layout's own region when
+  `set_layout` applies a new layout, lite cores zero the instance's fixed block. (R4)
 - **Breaking:** `pac::registers` is now `pac::fdcan`, and `pac_traits` is now `pac::common`.
 - **Breaking:** `FdCanConfig::interrupt_line_config` and both `select_interrupt_line_1` functions take the
   raw `Ils` register value instead of `Ir`. ILS has one bit per interrupt on H7 and one bit per interrupt group on the lite cores.
@@ -35,6 +42,12 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- Message RAM builder used byte offsets for word-addressed start fields, so every region after the first
+  was placed 4× too far. (R1)
+- Dedicated TX buffer `idx` ignored the element size, so buffers > 0 overlapped buffer 0. (R6, X1)
+- The builder carried the previous instance's dedicated TX buffer count into the next instance, refused
+  the last 4 words of RAM, and could panic on `u8` overflow or `expect`. (R1, P8)
+- Configuring one H7 instance zeroed the whole shared message RAM, wiping running neighbours. (R4)
 - G0 used the H7 register map, so most accesses from offset 0x80 on and most IR/IE bits were wrong. G0 now
   uses the lite map: global filter in RXGFC, `CCCR.BRSE`, lite IR/IE/TXBTIE/TXBCIE masks, typed `TSCC.TSS`.
   (P2)
@@ -43,4 +56,5 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Removed
 
+- `paste` dependency (unmaintained, RUSTSEC-2024-0436). (P11)
 - Unused `src/pac/rcc_g4.rs`. The generator recreates it when G4 support starts (P3).

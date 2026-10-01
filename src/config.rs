@@ -569,7 +569,7 @@ impl FdCan<ConfigMode> {
 
     #[inline]
     fn leave_init_mode(&mut self) -> Result<(), Error> {
-        self.apply_config(self.config);
+        self.apply_config(self.config)?;
 
         #[cfg(feature = "asynchronous")]
         self.enable_interrupts();
@@ -596,8 +596,10 @@ impl FdCan<ConfigMode> {
     }
 
     /// Applies the settings of a new FdCanConfig See [`FdCanConfig`]
+    ///
+    /// Fails with [Error::WrongInstance] if `config.layout` belongs to another instance.
     #[inline]
-    pub fn apply_config(&mut self, config: FdCanConfig) {
+    pub fn apply_config(&mut self, config: FdCanConfig) -> Result<(), Error> {
         self.set_data_bit_timing(config.dbtr);
         self.set_nominal_bit_timing(config.nbtr);
         self.set_automatic_retransmit(config.automatic_retransmit);
@@ -609,7 +611,8 @@ impl FdCan<ConfigMode> {
         self.set_protocol_exception_handling(config.protocol_exception_handling);
         self.set_global_filter(config.global_filter);
         #[cfg(feature = "h7")]
-        self.set_layout(config.layout);
+        self.set_layout(config.layout)?;
+        Ok(())
     }
 
     /// Configures the bit timings.
@@ -762,10 +765,19 @@ impl FdCan<ConfigMode> {
         });
     }
 
-    /// Configures RAM layout for this instance
+    /// Configures RAM layout for this instance. When the layout changes, the RAM region it owns is zeroed
+    /// (ECC initialisation), so applying the same layout again keeps what was written in Config mode.
+    ///
+    /// Returns [Error::WrongInstance] if the layout was built for another instance.
     #[cfg(feature = "h7")]
     #[inline]
-    pub fn set_layout(&mut self, layout: MessageRamLayout) {
+    pub fn set_layout(&mut self, layout: MessageRamLayout) -> Result<(), Error> {
+        if layout.instance.is_some_and(|i| i != self.instance) {
+            return Err(Error::WrongInstance);
+        }
+        if layout != self.config.layout {
+            self.zero_msg_ram(layout.region());
+        }
         self.config.layout = layout;
         self.can.sidfc().modify(|w| {
             w.set_flssa(layout.eleven_bit_filters_addr);
@@ -803,9 +815,13 @@ impl FdCan<ConfigMode> {
         self.can
             .txesc()
             .modify(|w| w.set_tbds(layout.tx_buffers_data_size.config_register()));
-        self.can.tttmc().modify(|w| {
-            w.set_tmsa(layout.trigger_memory_addr);
-            w.set_tme(layout.trigger_memory_len);
-        });
+        // TT registers only exist on FDCAN1 (RM0468).
+        if self.instance == crate::FdCanInstance::FdCan1 {
+            self.can.tttmc().modify(|w| {
+                w.set_tmsa(layout.trigger_memory_addr);
+                w.set_tme(layout.trigger_memory_len);
+            });
+        }
+        Ok(())
     }
 }
