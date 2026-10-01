@@ -12,9 +12,11 @@ use embassy_stm32::time::Hertz;
 use embassy_stm32::{Config, rcc};
 use embassy_time::{Duration, Instant};
 use mcan::fdcan::Receive;
+use mcan::pac::message_ram::{Esi, FrameFormat};
 use mcan::{
-    FdCan, FdCanInstances, MessageRamBuilder, RamBuilderInitialState, RxFifo, RxFrameHeader,
-    TxBufferIdx, TxFrameHeader,
+    ConfigMode, DataBitTiming, DataFieldSize, ExtendedId, FdCan, FdCanInstance, FdCanInstances, Id,
+    MessageRamBuilder, MessageRamLayout, NominalBitTiming, RamBuilderInitialState, RxFifo,
+    RxFrameHeader, StandardId, TxBufferIdx, TxFrameHeader,
 };
 
 /// FDCAN kernel clock: 24 MHz HSE bypass / 12 * 128 / 4 (PLL1_Q).
@@ -64,6 +66,17 @@ impl Board {
     }
 }
 
+impl Board {
+    /// Connects FDCAN1 to its pins (TX PB9, RX PB8, boards/b135.md). Only needed when the core uses the pins,
+    /// not in internal loopback. TX is recessive while the instance is in Config mode.
+    pub fn connect_fdcan1_pins(&mut self) {
+        mcan::embassy::configure_pins!(
+            tx: self.peripherals.PB9.reborrow(),
+            rx: self.peripherals.PB8.reborrow()
+        );
+    }
+}
+
 /// Generous upper bound for one frame at the bit rates used here.
 pub const FRAME_TIMEOUT: Duration = Duration::from_millis(10);
 
@@ -75,6 +88,8 @@ pub fn send<M: mcan::fdcan::Transmit>(
     data: &[u8],
 ) {
     defmt::unwrap!(can.write_tx_buffer_pend(idx, header, data));
+    // TXBRP shows the request only a few kernel clock cycles after the TXBAR write (FEATURES.md X1).
+    embassy_time::block_for(Duration::from_micros(1));
     let deadline = Instant::now() + FRAME_TIMEOUT;
     while !can.is_idle() {
         defmt::assert!(Instant::now() < deadline, "TX did not complete");
@@ -105,4 +120,98 @@ pub fn pattern(frame: usize, len: usize) -> [u8; 64] {
             0
         }
     })
+}
+
+/// Edge values of both ID classes.
+pub const IDS: [Id; 6] = [
+    Id::Standard(StandardId::ZERO),
+    Id::Standard(StandardId::new(0x125).unwrap()),
+    Id::Standard(StandardId::MAX),
+    Id::Extended(ExtendedId::ZERO),
+    Id::Extended(ExtendedId::new(0x1234_5678).unwrap()),
+    Id::Extended(ExtendedId::MAX),
+];
+
+/// Classic CAN data frame header.
+pub fn classic(id: Id) -> TxFrameHeader {
+    TxFrameHeader {
+        frame_format: FrameFormat::Classic,
+        id,
+        bit_rate_switching: false,
+        error_state: Esi::EsiDependsOnErrorPassive,
+        marker: None,
+    }
+}
+
+/// One dedicated 64-byte TX buffer, FIFO0 / FIFO1 with the given (length, element size).
+pub fn layout(
+    board: &mut Board,
+    fifo0: (u8, DataFieldSize),
+    fifo1: (u8, DataFieldSize),
+) -> (MessageRamLayout, TxBufferIdx) {
+    let builder = defmt::unwrap!(board.builder.take());
+    let b = defmt::unwrap!(
+        builder
+            .allocate_11bit_filters(0)
+            .and_then(|b| b.allocate_29bit_filters(0))
+            .and_then(|b| b.allocate_rx_fifo0_buffers(fifo0.0, fifo0.1))
+            .and_then(|b| b.allocate_rx_fifo1_buffers(fifo1.0, fifo1.1))
+            .map(|b| b.skip_dedicated_buffers())
+            .and_then(|b| b.allocate_tx_event_fifo_buffers(0))
+            .map(|b| b.tx_buffer_element_size(DataFieldSize::_64Bytes))
+            .and_then(|b| b.allocate_dedicated_tx_buffer())
+            .ok()
+    );
+    let (idx, b) = b;
+    let (layout, _) = defmt::unwrap!(
+        b.allocate_fifo_or_queue(0)
+            .and_then(|b| b.allocate_triggers(0))
+            .ok()
+    );
+    (layout, idx)
+}
+
+/// FDCAN1 in Config mode at 1 Mbit/s nominal and 4 Mbit/s data (64 MHz kernel clock), with `layout`.
+pub fn fdcan1_config(board: &mut Board, layout: MessageRamLayout) -> FdCan<ConfigMode> {
+    let can = defmt::unwrap!(board.instances.take_enabled(FdCanInstance::FdCan1));
+    let mut can = defmt::unwrap!(can.into_config_mode());
+    can.set_nominal_bit_timing(defmt::unwrap!(NominalBitTiming::new(1, 47, 16, 16)));
+    can.set_data_bit_timing(defmt::unwrap!(DataBitTiming::new(1, 11, 4, 4)));
+    defmt::unwrap!(can.set_layout(layout));
+    can
+}
+
+/// Runs `fut` to completion, polling it again only after it was woken, and gives up after `timeout`.
+///
+/// Busy-polling would hide a missing wake-up; this way a test only passes if the interrupt handler (or
+/// whatever the future waits for) actually wakes it.
+pub fn block_on_woken<F: core::future::Future>(timeout: Duration, fut: F) -> Option<F::Output> {
+    use core::sync::atomic::{AtomicBool, Ordering};
+    use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
+    static WOKEN: AtomicBool = AtomicBool::new(true);
+    fn raw() -> RawWaker {
+        RawWaker::new(core::ptr::null(), &VTABLE)
+    }
+    static VTABLE: RawWakerVTable = RawWakerVTable::new(
+        |_| raw(),
+        |_| WOKEN.store(true, Ordering::Release),
+        |_| WOKEN.store(true, Ordering::Release),
+        |_| {},
+    );
+
+    // SAFETY: the vtable functions ignore the data pointer.
+    let waker = unsafe { Waker::from_raw(raw()) };
+    let mut cx = Context::from_waker(&waker);
+    let mut fut = core::pin::pin!(fut);
+    let deadline = Instant::now() + timeout;
+    WOKEN.store(true, Ordering::Release);
+    while Instant::now() < deadline {
+        if WOKEN.swap(false, Ordering::AcqRel)
+            && let Poll::Ready(r) = fut.as_mut().poll(&mut cx)
+        {
+            return Some(r);
+        }
+    }
+    None
 }

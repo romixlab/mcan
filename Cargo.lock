@@ -193,6 +193,7 @@ dependencies = [
  "cortex-m",
  "defmt",
  "embassy-sync",
+ "portable-atomic",
  "static_cell",
 ]
 

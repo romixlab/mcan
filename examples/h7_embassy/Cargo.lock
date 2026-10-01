@@ -726,6 +726,7 @@ dependencies = [
  "cortex-m",
  "defmt 1.1.1",
  "embassy-sync",
+ "portable-atomic",
  "static_cell",
 ]
 

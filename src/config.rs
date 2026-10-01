@@ -4,9 +4,10 @@ use crate::fdcan::{
     TestMode,
 };
 use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
+use crate::interrupt::Interrupts;
 #[cfg(feature = "h7")]
 use crate::message_ram_layout::MessageRamLayout;
-use crate::pac::fdcan::regs::Ils;
+use portable_atomic::Ordering;
 
 /// Why a [NominalBitTiming] or [DataBitTiming] was rejected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -489,14 +490,16 @@ pub struct FdCanConfig {
     pub protocol_exception_handling: bool,
     /// Sets the general clock divider for this FdCAN instance
     pub clock_divider: ClockDivider,
-    /// This sets the interrupts for each interrupt line of the FdCan (FDCAN_INT0/1)
-    /// Each interrupt set to 0 is set to line_0, each set to 1 is set to line_1.
-    /// NOTE: This does not enable or disable the interrupt, but merely configure
-    /// them to which interrupt the WOULD trigger if they are enabled.
-    ///
-    /// This is the raw ILS register: one bit per interrupt on the full core (H7), one bit per interrupt group
-    /// on the lite cores (G0, G4, L5, H5).
-    pub interrupt_line_config: Ils,
+    /// Enabled interrupt sources (IE). None by default. See [crate::interrupt].
+    pub interrupts: Interrupts,
+    /// Sources routed to interrupt line 1, all others go to line 0. This only selects the line, it doesn't
+    /// enable anything. On the lite cores (G0, G4, L5, H5) the line is selected per group of sources
+    /// (RM0444 FDCAN_ILS), so a source here moves its whole group to line 1.
+    pub interrupt_line_1: Interrupts,
+    /// Start the bus-off recovery from [on_interrupt](crate::interrupt::on_interrupt) as soon as the node
+    /// goes bus-off. Enables the Bus_Off interrupt. Off by default: the application decides with
+    /// [FdCan::recover_from_bus_off]. Only works with the interrupt handler installed.
+    pub automatic_bus_off_recovery: bool,
     /// Sets the timestamp source
     pub timestamp_source: TimestampSource,
     /// Configures the Global Filter
@@ -580,11 +583,25 @@ impl FdCanConfig {
         self
     }
 
-    /// Selects Interrupt Line 1 for the given interrupts. Interrupt Line 0 is
-    /// selected for all other interrupts
+    /// Enables the given interrupt sources (and disables all others).
     #[inline]
-    pub const fn select_interrupt_line_1(mut self, l1int: Ils) -> Self {
-        self.interrupt_line_config = l1int;
+    pub const fn set_interrupts(mut self, interrupts: Interrupts) -> Self {
+        self.interrupts = interrupts;
+        self
+    }
+
+    /// Routes the given interrupt sources to line 1, all others to line 0. See
+    /// [FdCanConfig::interrupt_line_1].
+    #[inline]
+    pub const fn select_interrupt_line_1(mut self, line1: Interrupts) -> Self {
+        self.interrupt_line_1 = line1;
+        self
+    }
+
+    /// See [FdCanConfig::automatic_bus_off_recovery].
+    #[inline]
+    pub const fn set_automatic_bus_off_recovery(mut self, enabled: bool) -> Self {
+        self.automatic_bus_off_recovery = enabled;
         self
     }
 
@@ -621,7 +638,9 @@ impl Default for FdCanConfig {
             frame_transmit: FrameTransmissionConfig::ClassicCanOnly,
             non_iso_mode: false,
             edge_filtering: false,
-            interrupt_line_config: Ils(0),
+            interrupts: Interrupts::NONE,
+            interrupt_line_1: Interrupts::NONE,
+            automatic_bus_off_recovery: false,
             protocol_exception_handling: true,
             clock_divider: ClockDivider::_1,
             timestamp_source: TimestampSource::None,
@@ -721,9 +740,6 @@ impl FdCan<ConfigMode> {
     fn leave_init_mode(&mut self) -> Result<(), Error> {
         self.apply_config(self.config)?;
 
-        #[cfg(feature = "asynchronous")]
-        self.enable_interrupts();
-
         self.can.cccr().modify(|w| w.set_cce(false));
         self.can.cccr().modify(|w| w.set_init(false));
         crate::util::checked_wait(
@@ -731,18 +747,6 @@ impl FdCan<ConfigMode> {
             self.config.timeout_iterations_short,
         )?;
         Ok(())
-    }
-
-    #[inline]
-    #[cfg(feature = "asynchronous")]
-    fn enable_interrupts(&mut self) {
-        use crate::pac::fdcan::regs::{Ie, Txbcie, Txbtie};
-        use crate::pac::variant::{IR_ALL, TX_BUFFERS_ALL};
-        // Enable all interrupts when this crate handles them
-        self.can.ie().write_value(Ie(IR_ALL));
-        self.can.txbtie().write_value(Txbtie(TX_BUFFERS_ALL));
-        self.can.txbcie().write_value(Txbcie(TX_BUFFERS_ALL));
-        self.can.ile().modify(|w| w.set_eint0(true));
     }
 
     /// Applies the settings of a new FdCanConfig See [`FdCanConfig`]
@@ -755,7 +759,10 @@ impl FdCan<ConfigMode> {
         self.set_automatic_retransmit(config.automatic_retransmit);
         self.set_transmit_pause(config.transmit_pause);
         self.set_frame_transmit(config.frame_transmit);
-        self.select_interrupt_line_1(config.interrupt_line_config);
+        self.config.interrupts = config.interrupts;
+        self.config.automatic_bus_off_recovery = config.automatic_bus_off_recovery;
+        self.set_automatic_bus_off_recovery(config.automatic_bus_off_recovery);
+        self.select_interrupt_line_1(config.interrupt_line_1);
         self.set_non_iso_mode(config.non_iso_mode);
         self.set_edge_filtering(config.edge_filtering);
         self.set_protocol_exception_handling(config.protocol_exception_handling);
@@ -838,13 +845,28 @@ impl FdCan<ConfigMode> {
         self.config.frame_transmit = fts;
     }
 
-    /// Selects Interrupt Line 1 for the given interrupts. Interrupt Line 0 is
-    /// selected for all other interrupts. See
-    /// [`FdCanConfig::select_interrupt_line_1`]
-    pub fn select_interrupt_line_1(&mut self, l1int: Ils) {
-        self.can.ils().write_value(l1int);
+    /// Routes the given interrupt sources to line 1, all others to line 0. See
+    /// [FdCanConfig::interrupt_line_1].
+    pub fn select_interrupt_line_1(&mut self, line1: Interrupts) {
+        self.config.interrupt_line_1 = line1;
+        self.write_interrupt_lines();
+        self.write_interrupt_enables();
+    }
 
-        self.config.interrupt_line_config = l1int;
+    /// Enables exactly the given interrupt sources. [FdCan::enable_interrupts] and
+    /// [FdCan::disable_interrupts] change them in any mode.
+    pub fn set_interrupts(&mut self, interrupts: Interrupts) {
+        self.config.interrupts = interrupts;
+        self.write_interrupt_enables();
+    }
+
+    /// See [FdCanConfig::automatic_bus_off_recovery].
+    pub fn set_automatic_bus_off_recovery(&mut self, enabled: bool) {
+        self.config.automatic_bus_off_recovery = enabled;
+        self.state()
+            .automatic_bus_off_recovery
+            .store(enabled, Ordering::Release);
+        self.write_interrupt_enables();
     }
 
     /// Sets the protocol exception handling on/off

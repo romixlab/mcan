@@ -318,18 +318,6 @@ impl<M: Transmit> FdCan<M> {
     pub fn is_idle(&self) -> bool {
         self.can.txbrp().read().0 == 0x0
     }
-
-    /// Clears the transmission complete flag.
-    #[inline]
-    pub fn clear_transmission_completed_flag(&mut self) {
-        self.can.ir().write(|w| w.set_tc(true));
-    }
-
-    /// Clears the transmission cancelled flag.
-    #[inline]
-    pub fn clear_transmission_cancelled_flag(&mut self) {
-        self.can.ir().write(|w| w.set_tcf(true));
-    }
 }
 
 /// Header of a received frame.
@@ -415,14 +403,14 @@ impl<M: Receive> FdCan<M> {
         self.can.rxfs(fifo.nr()).read().ffl()
     }
 
-    /// Returns whether a frame was lost because the RX FIFO was full (IR.RFxL) and clears the flag.
+    /// Returns whether a frame was lost because the RX FIFO was full (IR.RFxL) and clears the flag. Same as
+    /// [FdCan::take_interrupt_flags] with [Interrupts::rx_fifo_message_lost](crate::Interrupts::rx_fifo_message_lost).
     #[inline]
     pub fn take_rx_fifo_message_lost(&mut self, fifo: RxFifo) -> bool {
-        let lost = self.can.ir().read().rfl(fifo.nr());
-        if lost {
-            self.can.ir().write(|w| w.set_rfl(fifo.nr(), true));
-        }
-        lost
+        // Also sees the flag if the interrupt handler cleared it (RFxL enabled as an interrupt).
+        !self
+            .take_interrupt_flags(crate::Interrupts::rx_fifo_message_lost(fifo))
+            .is_empty()
     }
 }
 

@@ -61,19 +61,15 @@ pub(crate) mod mapping_h7;
 pub(crate) use mapping_h7 as mapping;
 
 /// Differences between the full and lite cores that the generated register types can't express.
-#[cfg(all(feature = "asynchronous", feature = "h7"))]
+#[cfg(feature = "h7")]
 pub(crate) mod variant {
-    /// All defined IR / IE bits (IR bits 29:0, RM0468 FDCAN_IR, Bosch M_CAN user manual IR).
-    pub(crate) const IR_ALL: u32 = 0x3FFF_FFFF;
     /// One bit per TX buffer (32), for TXBTIE / TXBCIE.
     pub(crate) const TX_BUFFERS_ALL: u32 = 0xFFFF_FFFF;
 }
 
 /// Differences between the full and lite cores that the generated register types can't express.
-#[cfg(all(feature = "asynchronous", feature = "g0"))]
+#[cfg(not(feature = "h7"))]
 pub(crate) mod variant {
-    /// All defined IR / IE bits (IR bits 23:0, RM0444 FDCAN_IR).
-    pub(crate) const IR_ALL: u32 = 0x00FF_FFFF;
     /// One bit per TX buffer (3), for TXBTIE / TXBCIE.
     pub(crate) const TX_BUFFERS_ALL: u32 = 0b111;
 }

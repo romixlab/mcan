@@ -31,6 +31,23 @@ All notable changes to this crate are recorded here, newest first. The format fo
   enabled with `DataBitTiming::with_tdc`, written to DBTP.TDC and TDCR. (T2)
 - Host tests for bit timing validation and NBTP / DBTP / TDCR encoding. (Q1, T1, T2)
 - `MessageRamBuilderError::TriggerMemoryNotSupported`: trigger memory can only be allocated for FDCAN1. (R1)
+- `Interrupts`: typed set of interrupt sources with the right bit positions for the full and lite cores.
+  `FdCanConfig::interrupts` / `set_interrupts` enable them, `FdCan::enable_interrupts` /
+  `disable_interrupts` change them in any mode, `interrupt_flags` / `take_interrupt_flags` poll them. (I2)
+- `mcan::on_interrupt(instance, InterruptLine)` (module `interrupt`), available without the `asynchronous`
+  feature. (I1)
+- Async `wait_interrupts`, `wait_bus_off` and `wait_bus_off_recovered`. (I3, E3)
+- `error_counters()` (ECR: TEC, REC, RP, CEL) and `protocol_status()` (PSR: LEC, DLEC, activity, EW / EP /
+  BO, RESI / RBRS / REDL / PXE, TDCV), with `ErrorState`. Error codes that the driver's own PSR reads
+  reset are kept for the next `protocol_status()`. (E1, E2)
+- Bus-off: `is_bus_off()`, `recover_from_bus_off()` (clears INIT, no mode change) and
+  `FdCanConfig::automatic_bus_off_recovery` (recovery started by the interrupt handler). (E3)
+- `TestMode` can transmit and receive, `set_tx_pin(TxPinControl)` and `rx_pin()` give access to TEST.TX /
+  TEST.RX. (M5)
+- `hil/b135`: `interrupts`, `errors` and `test_mode` suites, all passing on B135B. Errors and bus-off are
+  provoked in internal loopback through a wrong TDC offset, so the bus is never driven. Shared helpers
+  (`layout`, `fdcan1_config`, `classic`, `block_on_woken`, `connect_fdcan1_pins`) moved into the crate. (Q4)
+- `portable-atomic` dependency for the state shared with the interrupt handler.
 
 ### Changed
 
@@ -43,8 +60,14 @@ All notable changes to this crate are recorded here, newest first. The format fo
 - Message RAM is no longer zeroed as a whole on entering Config mode: H7 zeroes a layout's own region when
   `set_layout` applies a new layout, lite cores zero the instance's fixed block. (R4)
 - **Breaking:** `pac::registers` is now `pac::fdcan`, and `pac_traits` is now `pac::common`.
-- **Breaking:** `FdCanConfig::interrupt_line_config` and both `select_interrupt_line_1` functions take the
-  raw `Ils` register value instead of `Ir`. ILS has one bit per interrupt on H7 and one bit per interrupt group on the lite cores.
+- **Breaking:** interrupts are enabled from the config only. The driver used to enable every source when
+  `asynchronous` was on; now none are enabled by default, and ILE enables a line only if a source is routed
+  to it. `FdCanConfig::interrupt_line_config: Ils` is replaced by `interrupt_line_1: Interrupts`
+  (`select_interrupt_line_1` takes `Interrupts`). On the lite cores a source moves its whole ILS group. (I2)
+- **Breaking:** `asynchronous::on_interrupt` moved to `mcan::on_interrupt`, and `FdCanInterrupt::{Irq0, Irq1}`
+  is now `InterruptLine::{Line0, Line1}`. (I1)
+- **Breaking:** `clear_transmission_completed_flag` and `clear_transmission_cancelled_flag` removed, use
+  `take_interrupt_flags`. (I1)
 - **Breaking:** `take_enabled()` and `disable()` exist only with the `rcc` feature.
 - RCC register code went from about 19k generated lines (H7 + G0) to about 500.
 - Clock enable / reset in `FdCanInstances` goes through the generated `rcc_fdcan` helpers. Only the
@@ -54,6 +77,10 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- The interrupt handler cleared every IR flag, so events nobody had handled were lost (e.g. RFxL for
+  `take_rx_fifo_message_lost`). It now handles only enabled flags routed to its line, and latches them. (I1, Y6)
+- Interrupt line 1 never fired: only EINT0 was set in ILE. (I2)
+- `g0,embassy` didn't compile (the interrupt code used FDCAN3 unconditionally). (P2, I1)
 - `set_global_filter` didn't store the filter in the config, so leaving Config mode re-applied the previous
   one. (F1)
 - Message RAM bitfield decoders no longer contain `unreachable!()`. (P8)

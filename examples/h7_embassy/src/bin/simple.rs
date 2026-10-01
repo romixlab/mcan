@@ -14,8 +14,8 @@ use embassy_stm32::time::Hertz;
 use embassy_stm32::{Config, interrupt, rcc};
 use embassy_time::Timer;
 use mcan::{
-    DataFieldSize, FdCanInstance, FdCanInterrupt, Id, NominalBitTiming, StandardId, TxBufferIdx,
-    TxFrameHeader,
+    DataFieldSize, ErrorState, FdCanInstance, Id, InterruptLine, NominalBitTiming, StandardId,
+    TxBufferIdx, TxFrameHeader,
 };
 use mcan::{MessageRamBuilder, MessageRamBuilderError, MessageRamLayout, RamBuilderInitialState};
 use {defmt_rtt as _, panic_probe as _};
@@ -62,6 +62,8 @@ async fn main(_spawner: Spawner) {
     can.set_nominal_bit_timing(unwrap!(NominalBitTiming::new(1, 55, 8, 1)));
     debug!("layout: {:#?}", layout_fdcan1);
     unwrap!(can.set_layout(layout_fdcan1));
+    // Needs the FDCAN1_IT0/IT1 handlers below: the driver restarts the node from bus-off on its own.
+    can.set_automatic_bus_off_recovery(true);
 
     //let mut can = unwrap!(can.into_internal_loopback());
     let mut can = unwrap!(can.into_normal());
@@ -81,6 +83,11 @@ async fn main(_spawner: Spawner) {
             &[0xAA, 0xBB, 0xCC],
         );
         unwrap!(r);
+
+        let status = can.protocol_status();
+        if status.last_error.is_error() || status.error_state() != ErrorState::Active {
+            warn!("{} {}", status, can.error_counters());
+        }
 
         led.set_high();
         Timer::after_millis(1000).await;
@@ -124,10 +131,10 @@ fn layout_fdcan_ram(
 
 #[interrupt]
 fn FDCAN1_IT0() {
-    mcan::asynchronous::on_interrupt(FdCanInstance::FdCan1, FdCanInterrupt::Irq0);
+    mcan::on_interrupt(FdCanInstance::FdCan1, InterruptLine::Line0);
 }
 
 #[interrupt]
 fn FDCAN1_IT1() {
-    mcan::asynchronous::on_interrupt(FdCanInstance::FdCan1, FdCanInterrupt::Irq1);
+    mcan::on_interrupt(FdCanInstance::FdCan1, InterruptLine::Line1);
 }

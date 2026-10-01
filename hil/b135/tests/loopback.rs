@@ -6,73 +6,19 @@
 #[cfg(test)]
 #[embedded_test::tests]
 mod tests {
-    use hil_b135::{Board, pattern, receive, send};
+    use hil_b135::{Board, IDS, classic, fdcan1_config, layout, pattern, receive, send};
     use mcan::config::{FrameTransmissionConfig, GlobalFilter, NonMatchingFilter};
     use mcan::fdcan::{Error, InternalLoopbackMode};
-    use mcan::pac::message_ram::{Esi, FrameFormat};
-    use mcan::{
-        DataBitTiming, DataFieldSize, ExtendedId, FdCan, FdCanInstance, Id, MessageRamLayout,
-        NominalBitTiming, RxFifo, StandardId, TxBufferIdx, TxFrameHeader,
-    };
+    use mcan::pac::message_ram::FrameFormat;
+    use mcan::{DataFieldSize, FdCan, MessageRamLayout, RxFifo, TxFrameHeader};
 
-    const IDS: [Id; 6] = [
-        Id::Standard(StandardId::ZERO),
-        Id::Standard(StandardId::new(0x125).unwrap()),
-        Id::Standard(StandardId::MAX),
-        Id::Extended(ExtendedId::ZERO),
-        Id::Extended(ExtendedId::new(0x1234_5678).unwrap()),
-        Id::Extended(ExtendedId::MAX),
-    ];
-
-    fn classic(id: Id) -> TxFrameHeader {
-        TxFrameHeader {
-            frame_format: FrameFormat::Classic,
-            id,
-            bit_rate_switching: false,
-            error_state: Esi::EsiDependsOnErrorPassive,
-            marker: None,
-        }
-    }
-
-    /// One dedicated 64-byte TX buffer, FIFO0 / FIFO1 with the given sizes.
-    fn layout(
-        board: &mut Board,
-        fifo0: (u8, DataFieldSize),
-        fifo1: (u8, DataFieldSize),
-    ) -> (MessageRamLayout, TxBufferIdx) {
-        let builder = defmt::unwrap!(board.builder.take());
-        let b = defmt::unwrap!(
-            builder
-                .allocate_11bit_filters(0)
-                .and_then(|b| b.allocate_29bit_filters(0))
-                .and_then(|b| b.allocate_rx_fifo0_buffers(fifo0.0, fifo0.1))
-                .and_then(|b| b.allocate_rx_fifo1_buffers(fifo1.0, fifo1.1))
-                .map(|b| b.skip_dedicated_buffers())
-                .and_then(|b| b.allocate_tx_event_fifo_buffers(0))
-                .map(|b| b.tx_buffer_element_size(DataFieldSize::_64Bytes))
-                .and_then(|b| b.allocate_dedicated_tx_buffer())
-                .ok()
-        );
-        let (idx, b) = b;
-        let (layout, _) = defmt::unwrap!(
-            b.allocate_fifo_or_queue(0)
-                .and_then(|b| b.allocate_triggers(0))
-                .ok()
-        );
-        (layout, idx)
-    }
-
-    /// FDCAN1 at 1 Mbit/s nominal and 4 Mbit/s data (64 MHz kernel clock), internal loopback.
+    /// FDCAN1 in internal loopback, see [fdcan1_config].
     fn loopback(
         board: &mut Board,
         layout: MessageRamLayout,
         configure: impl FnOnce(&mut FdCan<mcan::ConfigMode>),
     ) -> FdCan<InternalLoopbackMode> {
-        let can = defmt::unwrap!(board.instances.take_enabled(FdCanInstance::FdCan1));
-        let mut can = defmt::unwrap!(can.into_config_mode());
-        can.set_nominal_bit_timing(defmt::unwrap!(NominalBitTiming::new(1, 47, 16, 16)));
-        can.set_data_bit_timing(defmt::unwrap!(DataBitTiming::new(1, 11, 4, 4)));
-        defmt::unwrap!(can.set_layout(layout));
+        let mut can = fdcan1_config(board, layout);
         configure(&mut can);
         defmt::unwrap!(can.into_internal_loopback())
     }

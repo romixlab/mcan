@@ -12,8 +12,6 @@ use static_cell::StaticCell;
 pub struct FdCan<M> {
     pub(crate) can: pac::fdcan::Fdcan,
     pub(crate) instance: FdCanInstance,
-    #[cfg(feature = "embassy")]
-    pub(crate) state: &'static crate::asynchronous::State,
     pub(crate) config: FdCanConfig,
     pub(crate) _mode: PhantomData<M>,
 }
@@ -80,11 +78,32 @@ impl Receive for RestrictedOperationMode {}
 pub struct BusMonitoringMode;
 impl Receive for BusMonitoringMode {}
 
+/// Normal operation with write access to the TEST register (CCCR.TEST): the TX pin can be overridden with
+/// [FdCan::set_tx_pin] and the RX pin read with [FdCan::rx_pin].
+///
 /// Test mode must be used for production tests or self-test only. The software control for
 /// FDCAN_TX pin interferes with all CAN protocol functions. It is not recommended to use test
 /// modes for application.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TestMode;
+impl Transmit for TestMode {}
+impl Receive for TestMode {}
+
+/// Who drives the TX pin in [TestMode] (TEST.TX, Bosch M_CAN user manual "Test Register").
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum TxPinControl {
+    /// The CAN core (normal operation).
+    Core,
+    /// The sample point is shown on the pin.
+    SamplePoint,
+    /// Held dominant. Disturbs the bus.
+    Dominant,
+    /// Held recessive: the node never drives the bus, while the core still sees the real bus level.
+    /// Note: a frame requested in this state doesn't fail with a Bit0 error. On STM32H725 the core stays
+    /// "transmitter" at the start of frame and counts no errors (`hil/b135` `test_mode`).
+    Recessive,
+}
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Error {
@@ -140,9 +159,17 @@ pub enum FdCanInstance {
     FdCan3,
 }
 
-pub enum FdCanInterrupt {
-    Irq0,
-    Irq1,
+impl FdCanInstance {
+    pub(crate) fn regs(self) -> pac::fdcan::Fdcan {
+        let addr = match self {
+            FdCanInstance::FdCan1 => FDCAN1_REGISTER_BLOCK_ADDR,
+            FdCanInstance::FdCan2 => FDCAN2_REGISTER_BLOCK_ADDR,
+            #[cfg(feature = "h7")]
+            FdCanInstance::FdCan3 => pac::FDCAN3_REGISTER_BLOCK_ADDR,
+        };
+        // SAFETY: the register block of this instance.
+        unsafe { pac::fdcan::Fdcan::from_ptr(addr) }
+    }
 }
 
 #[cfg(feature = "h7")]
@@ -166,17 +193,10 @@ impl FdCanInstances {
             return Err(Error::PeripheralTaken);
         }
 
-        let fdcan1_regs = unsafe { pac::fdcan::Fdcan::from_ptr(FDCAN1_REGISTER_BLOCK_ADDR) };
-        let fdcan2_regs = unsafe { pac::fdcan::Fdcan::from_ptr(FDCAN2_REGISTER_BLOCK_ADDR) };
+        let fdcan1_regs = FdCanInstance::FdCan1.regs();
+        let fdcan2_regs = FdCanInstance::FdCan2.regs();
         #[cfg(feature = "h7")]
-        let fdcan3_regs = unsafe { pac::fdcan::Fdcan::from_ptr(pac::FDCAN3_REGISTER_BLOCK_ADDR) };
-
-        #[cfg(feature = "embassy")]
-        let fdcan1_state = crate::asynchronous::state_fdcan1();
-        #[cfg(feature = "embassy")]
-        let fdcan2_state = crate::asynchronous::state_fdcan2();
-        #[cfg(all(feature = "embassy", feature = "h7"))]
-        let fdcan3_state = crate::asynchronous::state_fdcan3();
+        let fdcan3_regs = FdCanInstance::FdCan3.regs();
 
         #[cfg(feature = "h7")]
         let ram_builder = crate::message_ram_builder::message_ram_builder();
@@ -189,16 +209,12 @@ impl FdCanInstances {
         let fdcan1 = FdCan {
             can: fdcan1_regs,
             instance: FdCanInstance::FdCan1,
-            #[cfg(feature = "embassy")]
-            state: fdcan1_state,
             config: FdCanConfig::default(),
             _mode: PhantomData,
         };
         let fdcan2 = FdCan {
             can: fdcan2_regs,
             instance: FdCanInstance::FdCan2,
-            #[cfg(feature = "embassy")]
-            state: fdcan2_state,
             config: FdCanConfig::default(),
             _mode: PhantomData,
         };
@@ -206,8 +222,6 @@ impl FdCanInstances {
         let fdcan3 = FdCan {
             can: fdcan3_regs,
             instance: FdCanInstance::FdCan3,
-            #[cfg(feature = "embassy")]
-            state: fdcan3_state,
             config: FdCanConfig::default(),
             _mode: PhantomData,
         };
@@ -467,8 +481,6 @@ impl<M> FdCan<M> {
         FdCan {
             can: self.can,
             instance: self.instance,
-            #[cfg(feature = "embassy")]
-            state: self.state,
             config: self.config,
             _mode: Default::default(),
         }
@@ -497,6 +509,31 @@ impl FdCan<PoweredDownMode> {
         #[cfg(not(feature = "h7"))]
         self.zero_msg_ram(crate::message_ram_layout::lite_region(self.instance));
         Ok(())
+    }
+}
+
+impl FdCan<TestMode> {
+    /// Overrides the TX pin (TEST.TX).
+    #[inline]
+    pub fn set_tx_pin(&mut self, control: TxPinControl) {
+        let bits = match control {
+            TxPinControl::Core => 0b00,
+            TxPinControl::SamplePoint => 0b01,
+            TxPinControl::Dominant => 0b10,
+            TxPinControl::Recessive => 0b11,
+        };
+        self.can.test().modify(|w| {
+            #[cfg(feature = "h7")]
+            w.set_tx(bits);
+            #[cfg(not(feature = "h7"))]
+            w.set_tx(crate::pac::fdcan::vals::Tx::from_bits(bits));
+        });
+    }
+
+    /// Level of the RX pin (TEST.RX): `true` is recessive.
+    #[inline]
+    pub fn rx_pin(&self) -> bool {
+        self.can.test().read().rx()
     }
 }
 

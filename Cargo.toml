@@ -7,6 +7,9 @@ edition = "2024"
 static_cell = "2.1"
 cortex-m = { version = "0.7.7" }
 bitfield-struct = "0.13"
+# Atomics shared with the interrupt handler. Native on Armv7-M; Armv6-M (G0) needs its `critical-section`
+# feature, like static_cell.
+portable-atomic = { version = "1.15", default-features = false }
 embassy-sync = { version = "0.8", optional = true }
 defmt = { version = "1.1", optional = true }
 
