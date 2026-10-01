@@ -1,5 +1,5 @@
-use crate::pac::registers::Fdcan;
-use crate::pac::registers::regs::Ir;
+use crate::pac::fdcan::Fdcan;
+use crate::pac::fdcan::regs::Ir;
 use crate::pac::{
     FDCAN1_REGISTER_BLOCK_ADDR, FDCAN2_REGISTER_BLOCK_ADDR, FDCAN3_REGISTER_BLOCK_ADDR,
 };
@@ -56,5 +56,5 @@ pub fn on_interrupt(instance: FdCanInstance, irq: FdCanInterrupt) {
         state.rx_dedicated_waker.wake();
     }
 
-    regs.ir().write_value(Ir(u32::MAX >> 2));
+    regs.ir().write_value(Ir(crate::pac::variant::IR_ALL));
 }

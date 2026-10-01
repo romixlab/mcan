@@ -6,7 +6,7 @@ use crate::fdcan::{
 use crate::fdcan::{ConfigMode, FdCan, InternalLoopbackMode, LoopbackMode};
 #[cfg(feature = "h7")]
 use crate::message_ram_layout::MessageRamLayout;
-use crate::pac::registers::regs::Ir;
+use crate::pac::fdcan::regs::Ils;
 use core::num::{NonZeroU8, NonZeroU16};
 
 /// Configures the bit timings.
@@ -343,7 +343,10 @@ pub struct FdCanConfig {
     /// Each interrupt set to 0 is set to line_0, each set to 1 is set to line_1.
     /// NOTE: This does not enable or disable the interrupt, but merely configure
     /// them to which interrupt the WOULD trigger if they are enabled.
-    pub interrupt_line_config: Ir,
+    ///
+    /// This is the raw ILS register: one bit per interrupt on the full core (H7), one bit per interrupt group
+    /// on the lite cores (G0, G4, L5, H5).
+    pub interrupt_line_config: Ils,
     /// Sets the timestamp source
     pub timestamp_source: TimestampSource,
     /// Configures the Global Filter
@@ -430,7 +433,7 @@ impl FdCanConfig {
     /// Selects Interrupt Line 1 for the given interrupts. Interrupt Line 0 is
     /// selected for all other interrupts
     #[inline]
-    pub const fn select_interrupt_line_1(mut self, l1int: Ir) -> Self {
+    pub const fn select_interrupt_line_1(mut self, l1int: Ils) -> Self {
         self.interrupt_line_config = l1int;
         self
     }
@@ -468,7 +471,7 @@ impl Default for FdCanConfig {
             frame_transmit: FrameTransmissionConfig::ClassicCanOnly,
             non_iso_mode: false,
             edge_filtering: false,
-            interrupt_line_config: Ir(0),
+            interrupt_line_config: Ils(0),
             protocol_exception_handling: true,
             clock_divider: ClockDivider::_1,
             timestamp_source: TimestampSource::None,
@@ -583,11 +586,12 @@ impl FdCan<ConfigMode> {
     #[inline]
     #[cfg(feature = "asynchronous")]
     fn enable_interrupts(&mut self) {
-        use crate::pac::registers::regs::{Ie, Txbcie, Txbtie};
+        use crate::pac::fdcan::regs::{Ie, Txbcie, Txbtie};
+        use crate::pac::variant::{IR_ALL, TX_BUFFERS_ALL};
         // Enable all interrupts when this crate handles them
-        self.can.ie().write_value(Ie(u32::MAX >> 2));
-        self.can.txbtie().write_value(Txbtie(u32::MAX));
-        self.can.txbcie().write_value(Txbcie(u32::MAX));
+        self.can.ie().write_value(Ie(IR_ALL));
+        self.can.txbtie().write_value(Txbtie(TX_BUFFERS_ALL));
+        self.can.txbcie().write_value(Txbcie(TX_BUFFERS_ALL));
         self.can.ile().modify(|w| w.set_eint0(true));
     }
 
@@ -692,7 +696,10 @@ impl FdCan<ConfigMode> {
 
         self.can.cccr().modify(|w| {
             w.set_fdoe(fdoe);
+            #[cfg(feature = "h7")]
             w.set_bse(brse);
+            #[cfg(not(feature = "h7"))]
+            w.set_brse(brse);
         });
 
         self.config.frame_transmit = fts;
@@ -701,8 +708,8 @@ impl FdCan<ConfigMode> {
     /// Selects Interrupt Line 1 for the given interrupts. Interrupt Line 0 is
     /// selected for all other interrupts. See
     /// [`FdCanConfig::select_interrupt_line_1`]
-    pub fn select_interrupt_line_1(&mut self, l1int: Ir) {
-        self.can.ils().modify(|w| w.0 = l1int.0);
+    pub fn select_interrupt_line_1(&mut self, l1int: Ils) {
+        self.can.ils().write_value(l1int);
 
         self.config.interrupt_line_config = l1int;
     }
@@ -725,7 +732,10 @@ impl FdCan<ConfigMode> {
         };
         self.can.tscc().write(|w| {
             w.set_tcp(tcp);
+            #[cfg(feature = "h7")]
             w.set_tss(tss);
+            #[cfg(not(feature = "h7"))]
+            w.set_tss(crate::pac::fdcan::vals::Tss::from_bits(tss));
         });
 
         self.config.timestamp_source = select;
@@ -734,9 +744,19 @@ impl FdCan<ConfigMode> {
     /// Configures the global filter settings
     #[inline]
     pub fn set_global_filter(&mut self, filter: GlobalFilter) {
+        #[cfg(feature = "h7")]
         self.can.gfc().modify(|w| {
             w.set_anfs(filter.handle_standard_frames as u8);
             w.set_anfe(filter.handle_extended_frames as u8);
+            w.set_rrfs(filter.reject_remote_standard_frames);
+            w.set_rrfe(filter.reject_remote_extended_frames);
+        });
+        // Lite cores: the global filter fields live in RXGFC (same bit positions as GFC on H7).
+        #[cfg(not(feature = "h7"))]
+        self.can.rxgfc().modify(|w| {
+            use crate::pac::fdcan::vals::{Anfe, Anfs};
+            w.set_anfs(Anfs::from_bits(filter.handle_standard_frames as u8));
+            w.set_anfe(Anfe::from_bits(filter.handle_extended_frames as u8));
             w.set_rrfs(filter.reject_remote_standard_frames);
             w.set_rrfe(filter.reject_remote_extended_frames);
         });

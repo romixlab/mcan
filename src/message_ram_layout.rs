@@ -1,7 +1,7 @@
+use crate::pac::common::{RW, Reg};
 use crate::pac::message_ram::{
     EventFIFOControl, Rtr, TimeStampCaptureEnable, TxBufferElementT0, TxBufferElementT1,
 };
-use crate::pac_traits::{RW, Reg};
 use crate::tx_rx::{Dlc, TxFrameHeader};
 use crate::{Error, FdCan, FdCanInstance};
 

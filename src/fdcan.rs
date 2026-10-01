@@ -1,14 +1,16 @@
 use crate::config::FdCanConfig;
+use crate::pac;
+#[cfg(feature = "rcc")]
+use crate::pac::RCC_REGISTER_BLOCK_ADDR;
 use crate::pac::{
     FDCAN_MSGRAM_ADDR, FDCAN_MSGRAM_LEN_WORDS, FDCAN1_REGISTER_BLOCK_ADDR,
-    FDCAN2_REGISTER_BLOCK_ADDR, RCC_REGISTER_BLOCK_ADDR,
+    FDCAN2_REGISTER_BLOCK_ADDR,
 };
-use crate::{CLOCK_DOMAIN_SYNCHRONIZATION_DELAY, pac};
 use core::marker::PhantomData;
 use static_cell::StaticCell;
 
 pub struct FdCan<M> {
-    pub(crate) can: pac::registers::Fdcan,
+    pub(crate) can: pac::fdcan::Fdcan,
     pub(crate) instance: FdCanInstance,
     #[cfg(feature = "embassy")]
     pub(crate) state: &'static crate::asynchronous::State,
@@ -108,6 +110,11 @@ pub(crate) enum LoopbackMode {
 
 /// All FDCAN instances and an entry point for this driver.
 /// Clock, enable and reset are the same for all of them, so it's only possible to enable or disable if all instances are present.
+///
+/// With the `rcc` feature (default) this driver enables, resets and disables the FDCAN clock itself
+/// ([take_enabled](Self::take_enabled), [disable](Self::disable)). Without it, RCC is left to the HAL: enable and
+/// reset the FDCAN clock there (e.g. `embassy_stm32::rcc::enable_and_reset::<FDCAN1>()`), then use
+/// [take](Self::take).
 pub struct FdCanInstances {
     fdcan1: Option<FdCan<PoweredDownMode>>,
     // TODO: make second/third channel optional to conserve memory?
@@ -115,10 +122,8 @@ pub struct FdCanInstances {
     #[cfg(feature = "h7")]
     fdcan3: Option<FdCan<PoweredDownMode>>,
 
-    #[cfg(feature = "g0")]
-    rcc: pac::rcc_g0::Rcc,
-    #[cfg(feature = "h7")]
-    rcc: pac::rcc_h7::Rcc,
+    #[cfg(feature = "rcc")]
+    rcc: pac::rcc::Rcc,
 }
 
 /// FDCAN instance number as an enum
@@ -149,18 +154,18 @@ type NewResult = FdCanInstances;
 static PERIPHERAL_TAKEN: StaticCell<()> = StaticCell::new();
 
 impl FdCanInstances {
-    /// Creates FDCAN instances in powered down state (enable a flag is cleared in RCC as well).
+    /// Creates FDCAN instances in powered down state (with the `rcc` feature, the clock enable flag is cleared
+    /// in RCC as well).
     /// This method can be called only once, otherwise Error::PeripheralTaken is returned.
     pub fn new() -> Result<NewResult, Error> {
         if PERIPHERAL_TAKEN.try_init(()).is_none() {
             return Err(Error::PeripheralTaken);
         }
 
-        let fdcan1_regs = unsafe { pac::registers::Fdcan::from_ptr(FDCAN1_REGISTER_BLOCK_ADDR) };
-        let fdcan2_regs = unsafe { pac::registers::Fdcan::from_ptr(FDCAN2_REGISTER_BLOCK_ADDR) };
+        let fdcan1_regs = unsafe { pac::fdcan::Fdcan::from_ptr(FDCAN1_REGISTER_BLOCK_ADDR) };
+        let fdcan2_regs = unsafe { pac::fdcan::Fdcan::from_ptr(FDCAN2_REGISTER_BLOCK_ADDR) };
         #[cfg(feature = "h7")]
-        let fdcan3_regs =
-            unsafe { pac::registers::Fdcan::from_ptr(pac::FDCAN3_REGISTER_BLOCK_ADDR) };
+        let fdcan3_regs = unsafe { pac::fdcan::Fdcan::from_ptr(pac::FDCAN3_REGISTER_BLOCK_ADDR) };
 
         #[cfg(feature = "embassy")]
         let fdcan1_state = crate::asynchronous::state_fdcan1();
@@ -175,10 +180,10 @@ impl FdCanInstances {
 
         let mut s = Self::empty();
 
-        #[cfg(feature = "g0")]
+        #[cfg(all(feature = "rcc", feature = "g0"))]
         s.rcc.apbenr1().modify(|w| w.set_fdcanen(false));
 
-        #[cfg(feature = "h7")]
+        #[cfg(all(feature = "rcc", feature = "h7"))]
         s.rcc.apb1henr().modify(|w| w.set_fdcanen(false));
 
         let fdcan1 = FdCan {
@@ -222,21 +227,18 @@ impl FdCanInstances {
     /// There is no need to keep FdCanInstances around if all instances were taken from it, but if clocks need to be disabled, then
     /// this method can be used to re-create it.
     pub fn empty() -> Self {
-        #[cfg(feature = "g0")]
-        let rcc = unsafe { pac::rcc_g0::Rcc::from_ptr(RCC_REGISTER_BLOCK_ADDR) };
-        #[cfg(feature = "h7")]
-        let rcc = unsafe { pac::rcc_h7::Rcc::from_ptr(RCC_REGISTER_BLOCK_ADDR) };
-
         Self {
             fdcan1: None,
             fdcan2: None,
             #[cfg(feature = "h7")]
             fdcan3: None,
-            rcc,
+            #[cfg(feature = "rcc")]
+            rcc: unsafe { pac::rcc::Rcc::from_ptr(RCC_REGISTER_BLOCK_ADDR) },
         }
     }
 
     /// Enable clock and reset all FDCAN instances if not already and take the requested instance out of this struct.
+    #[cfg(feature = "rcc")]
     pub fn take_enabled(
         &mut self,
         instance: FdCanInstance,
@@ -250,6 +252,14 @@ impl FdCanInstances {
             self.enable_reset()?;
         }
 
+        self.take(instance)
+    }
+
+    /// Take the requested instance out of this struct without touching RCC.
+    ///
+    /// The FDCAN clock must already be enabled (and the peripheral reset), e.g. by the HAL. If it is not,
+    /// [into_config_mode](FdCan::into_config_mode) fails with [Error::CoreCommunicationFailed].
+    pub fn take(&mut self, instance: FdCanInstance) -> Result<FdCan<PoweredDownMode>, Error> {
         match instance {
             FdCanInstance::FdCan1 => self.fdcan1.take().ok_or(Error::PeripheralTaken),
             FdCanInstance::FdCan2 => self.fdcan2.take().ok_or(Error::PeripheralTaken),
@@ -259,6 +269,7 @@ impl FdCanInstances {
     }
 
     /// Disable clock for all instances if they are all present, otherwise return MissingInstances error.
+    #[cfg(feature = "rcc")]
     pub fn disable(&mut self) -> Result<(), Error> {
         #[cfg(feature = "h7")]
         let all_present = self.fdcan1.is_some() && self.fdcan2.is_some() && self.fdcan3.is_some();
@@ -306,7 +317,7 @@ impl FdCanInstances {
         Ok(())
     }
 
-    #[cfg(feature = "g0")]
+    #[cfg(all(feature = "rcc", feature = "g0"))]
     #[inline]
     fn enable_reset(&mut self) -> Result<(), Error> {
         if self.fdcan1.is_none() || self.fdcan2.is_none() {
@@ -319,7 +330,7 @@ impl FdCanInstances {
             self.rcc.ccipr2().read().fdcansel()
         );
 
-        use crate::pac::rcc_g0::vals::Fdcansel;
+        use crate::pac::rcc::vals::Fdcansel;
         match self.rcc.ccipr2().read().fdcansel() {
             Fdcansel::PCLK1 => {}
             Fdcansel::PLL1_Q => {
@@ -339,7 +350,7 @@ impl FdCanInstances {
 
         self.rcc.apbrstr1().modify(|w| w.set_fdcanrst(true));
         self.rcc.apbenr1().modify(|w| w.set_fdcanen(true));
-        cortex_m::asm::delay(CLOCK_DOMAIN_SYNCHRONIZATION_DELAY);
+        cortex_m::asm::delay(crate::CLOCK_DOMAIN_SYNCHRONIZATION_DELAY);
         // DSB for good measure
         cortex_m::asm::dsb();
         self.rcc.apbrstr1().modify(|w| w.set_fdcanrst(false));
@@ -347,7 +358,7 @@ impl FdCanInstances {
         Ok(())
     }
 
-    #[cfg(feature = "h7")]
+    #[cfg(all(feature = "rcc", feature = "h7"))]
     #[inline]
     fn enable_reset(&mut self) -> Result<(), Error> {
         if self.fdcan1.is_none() || self.fdcan2.is_none() || self.fdcan3.is_none() {
@@ -360,7 +371,7 @@ impl FdCanInstances {
             self.rcc.d2ccip1r().read().fdcansel()
         );
 
-        use crate::pac::rcc_h7::vals::Fdcansel;
+        use crate::pac::rcc::vals::Fdcansel;
         match self.rcc.d2ccip1r().read().fdcansel() {
             Fdcansel::HSE => {
                 if !self.rcc.cr().read().hseon() {
@@ -384,7 +395,7 @@ impl FdCanInstances {
 
         self.rcc.apb1hrstr().modify(|w| w.set_fdcanrst(true));
         self.rcc.apb1henr().modify(|w| w.set_fdcanen(true));
-        cortex_m::asm::delay(CLOCK_DOMAIN_SYNCHRONIZATION_DELAY);
+        cortex_m::asm::delay(crate::CLOCK_DOMAIN_SYNCHRONIZATION_DELAY);
         // DSB for good measure
         cortex_m::asm::dsb();
         self.rcc.apb1hrstr().modify(|w| w.set_fdcanrst(false));

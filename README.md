@@ -5,14 +5,14 @@ Contributor / agent instructions: see [AGENTS.md](AGENTS.md).
 
 # Goals
 
-* Stand-alone, no external pac/hal dependencies
+* Stand-alone, no external pac/hal dependencies (built-in RCC handling is optional, so it can also sit under a HAL)
 * Support for STM32 G0, G4, H5, H7, L5 (should be possible to support others as well)
 * No panics or asserts, always return Result if something goes wrong
 * No blocking waits without timeout
 * Optional async support (embassy or RTIC?): interrupt handling, bus off management task, async tx/rx
 * Optional sync mode with channels?
 * Use stm32-data generated register abstraction layer
-* Minimize usage of macros
+* Driver logic in plain Rust, no HAL-style giant `macro_rules!` (macros only where they remove real repetition)
 * Reduce number of generics, for example, FdCan is not generic over CAN peripheral instance
 * Support raw timestamping in both Classical and FD modes, let users handle time conversions
 * RAM layout configuration builder (similar to how usbd builds descriptors)

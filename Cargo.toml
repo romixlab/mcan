@@ -12,11 +12,14 @@ defmt = { version = "1.1", optional = true }
 paste = "1.0.15"
 
 [features]
-default = ["dep:defmt"]
+default = ["dep:defmt", "rcc"]
 g0 = []
 g4 = []
 l5 = []
 h7 = []
+# Built-in clock enable / reset / clock-source check. Disable it when a HAL (e.g. embassy-stm32) owns RCC,
+# then enable and reset the FDCAN clock there and use `FdCanInstances::take`.
+rcc = []
 defmt = []
 asynchronous = ["dep:embassy-sync"]
 embassy = ["asynchronous"]
