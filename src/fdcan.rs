@@ -180,11 +180,8 @@ impl FdCanInstances {
 
         let mut s = Self::empty();
 
-        #[cfg(all(feature = "rcc", feature = "g0"))]
-        s.rcc.apbenr1().modify(|w| w.set_fdcanen(false));
-
-        #[cfg(all(feature = "rcc", feature = "h7"))]
-        s.rcc.apb1henr().modify(|w| w.set_fdcanen(false));
+        #[cfg(feature = "rcc")]
+        pac::rcc_fdcan::set_enabled(s.rcc, false);
 
         let fdcan1 = FdCan {
             can: fdcan1_regs,
@@ -243,12 +240,7 @@ impl FdCanInstances {
         &mut self,
         instance: FdCanInstance,
     ) -> Result<FdCan<PoweredDownMode>, Error> {
-        #[cfg(feature = "g0")]
-        let is_enabled = self.rcc.apbenr1().read().fdcanen();
-        #[cfg(feature = "h7")]
-        let is_enabled = self.rcc.apb1henr().read().fdcanen();
-
-        if !is_enabled {
+        if !pac::rcc_fdcan::is_enabled(self.rcc) {
             self.enable_reset()?;
         }
 
@@ -271,18 +263,11 @@ impl FdCanInstances {
     /// Disable clock for all instances if they are all present, otherwise return MissingInstances error.
     #[cfg(feature = "rcc")]
     pub fn disable(&mut self) -> Result<(), Error> {
-        #[cfg(feature = "h7")]
-        let all_present = self.fdcan1.is_some() && self.fdcan2.is_some() && self.fdcan3.is_some();
-        #[cfg(feature = "g0")]
-        let all_present = self.fdcan1.is_some() && self.fdcan2.is_some();
-        if !all_present {
+        if !self.all_present() {
             return Err(Error::MissingInstance);
         }
 
-        #[cfg(feature = "h7")]
-        self.rcc.apb1henr().modify(|w| w.set_fdcanen(false));
-        #[cfg(feature = "g0")]
-        self.rcc.apbenr1().modify(|w| w.set_fdcanen(false));
+        pac::rcc_fdcan::set_enabled(self.rcc, false);
 
         Ok(())
     }
@@ -317,90 +302,64 @@ impl FdCanInstances {
         Ok(())
     }
 
-    #[cfg(all(feature = "rcc", feature = "g0"))]
+    #[cfg(feature = "rcc")]
+    fn all_present(&self) -> bool {
+        #[cfg(feature = "h7")]
+        let all = self.fdcan1.is_some() && self.fdcan2.is_some() && self.fdcan3.is_some();
+        #[cfg(feature = "g0")]
+        let all = self.fdcan1.is_some() && self.fdcan2.is_some();
+        all
+    }
+
+    /// Enables the FDCAN clock and resets all instances (they share one clock and reset line).
+    #[cfg(feature = "rcc")]
     #[inline]
     fn enable_reset(&mut self) -> Result<(), Error> {
-        if self.fdcan1.is_none() || self.fdcan2.is_none() {
+        if !self.all_present() {
             return Err(Error::MissingInstance);
         }
 
         #[cfg(feature = "defmt")]
         defmt::debug!(
             "FDCAN clock source: {}",
-            self.rcc.ccipr2().read().fdcansel()
+            pac::rcc_fdcan::kernel_clock(self.rcc)
         );
-
-        use crate::pac::rcc::vals::Fdcansel;
-        match self.rcc.ccipr2().read().fdcansel() {
-            Fdcansel::PCLK1 => {}
-            Fdcansel::PLL1_Q => {
-                if !self.rcc.pllcfgr().read().pllqen() {
-                    return Err(Error::ClockSourceIsDisabled);
-                }
-            }
-            Fdcansel::HSE => {
-                if !self.rcc.cr().read().hseon() {
-                    return Err(Error::ClockSourceIsDisabled);
-                }
-            }
-            Fdcansel::_RESERVED_3 => {
-                return Err(Error::ClockSourceIsDisabled);
-            }
+        if !self.kernel_clock_running() {
+            return Err(Error::ClockSourceIsDisabled);
         }
 
-        self.rcc.apbrstr1().modify(|w| w.set_fdcanrst(true));
-        self.rcc.apbenr1().modify(|w| w.set_fdcanen(true));
+        pac::rcc_fdcan::set_reset(self.rcc, true);
+        pac::rcc_fdcan::set_enabled(self.rcc, true);
         cortex_m::asm::delay(crate::CLOCK_DOMAIN_SYNCHRONIZATION_DELAY);
         // DSB for good measure
         cortex_m::asm::dsb();
-        self.rcc.apbrstr1().modify(|w| w.set_fdcanrst(false));
+        pac::rcc_fdcan::set_reset(self.rcc, false);
 
         Ok(())
     }
 
-    #[cfg(all(feature = "rcc", feature = "h7"))]
-    #[inline]
-    fn enable_reset(&mut self) -> Result<(), Error> {
-        if self.fdcan1.is_none() || self.fdcan2.is_none() || self.fdcan3.is_none() {
-            return Err(Error::MissingInstance);
-        }
-
-        #[cfg(feature = "defmt")]
-        defmt::debug!(
-            "FDCAN clock source: {}",
-            self.rcc.d2ccip1r().read().fdcansel()
-        );
-
+    /// Whether the oscillator / PLL output selected as FDCAN kernel clock is enabled (RM0444 RCC_CCIPR2).
+    #[cfg(all(feature = "rcc", feature = "g0"))]
+    fn kernel_clock_running(&self) -> bool {
         use crate::pac::rcc::vals::Fdcansel;
-        match self.rcc.d2ccip1r().read().fdcansel() {
-            Fdcansel::HSE => {
-                if !self.rcc.cr().read().hseon() {
-                    return Err(Error::ClockSourceIsDisabled);
-                }
-            }
-            Fdcansel::PLL1_Q => {
-                if !self.rcc.pllcfgr().read().divqen(0) {
-                    return Err(Error::ClockSourceIsDisabled);
-                }
-            }
-            Fdcansel::PLL2_Q => {
-                if !self.rcc.pllcfgr().read().divqen(1) {
-                    return Err(Error::ClockSourceIsDisabled);
-                }
-            }
-            Fdcansel::_RESERVED_3 => {
-                return Err(Error::ClockSourceIsDisabled);
-            }
+        match pac::rcc_fdcan::kernel_clock(self.rcc) {
+            Fdcansel::PCLK1 => true,
+            Fdcansel::PLL1_Q => self.rcc.pllcfgr().read().pllqen(),
+            Fdcansel::HSE => self.rcc.cr().read().hseon(),
+            Fdcansel::_RESERVED_3 => false,
         }
+    }
 
-        self.rcc.apb1hrstr().modify(|w| w.set_fdcanrst(true));
-        self.rcc.apb1henr().modify(|w| w.set_fdcanen(true));
-        cortex_m::asm::delay(crate::CLOCK_DOMAIN_SYNCHRONIZATION_DELAY);
-        // DSB for good measure
-        cortex_m::asm::dsb();
-        self.rcc.apb1hrstr().modify(|w| w.set_fdcanrst(false));
-
-        Ok(())
+    /// Whether the oscillator / PLL output selected as FDCAN kernel clock is enabled (RM0468 RCC_D2CCIP1R).
+    #[cfg(all(feature = "rcc", feature = "h7"))]
+    fn kernel_clock_running(&self) -> bool {
+        use crate::pac::rcc::vals::Fdcansel;
+        match pac::rcc_fdcan::kernel_clock(self.rcc) {
+            Fdcansel::HSE => self.rcc.cr().read().hseon(),
+            Fdcansel::PLL1_Q => self.rcc.pllcfgr().read().divqen(0),
+            Fdcansel::PLL2_Q => self.rcc.pllcfgr().read().divqen(1),
+            Fdcansel::_RESERVED_3 => false,
+        }
     }
 }
 
