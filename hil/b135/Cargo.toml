@@ -34,6 +34,9 @@ cortex-m-rt = "0.7.7"
 portable-atomic = { version = "1.15", features = ["critical-section"] } # static_cell in mcan
 defmt = "1.1.1"
 defmt-rtt = "1.3.0"
+# Never enable `disabled` here: `Counters::get` would return 0 and every "no errors" assert would pass
+# trivially (FEATURES.md Q9). src/lib.rs refuses to compile if it is enabled anywhere in the build.
+cnt = "0.4.1"
 
 [dev-dependencies]
 # Pairs with probe-rs 0.32 (see FEATURES.md Q3). Default features bring the panic handler.

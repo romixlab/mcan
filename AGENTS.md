@@ -16,6 +16,9 @@ its relevance for analyzers vs. nodes, and its test coverage.
 
 - **Read it before starting** a task. Feature IDs (`R1`, `X4`, …) are the shared vocabulary for issues,
   commits and TODOs.
+- **Name IDs with a short slug when talking to the user** (answers, plans, summaries, tables):
+  `E6 cnt-driver-stats`, never a bare `E6`. The slug is 2-4 kebab-case words from the item's title. Commit
+  messages, CHANGELOG and code `TODO`s keep the bare ID.
 - **Update it in the same change** that implements, fixes, breaks, removes or tests something. That includes
   the Tests column and the *Last full audit* line when you re-audit.
 - Do not track status anywhere else (README checklists, TODO files, etc.). Code `TODO`s should reference a
@@ -98,9 +101,15 @@ unfinished features.
   - Driver: declare events as a `#[derive(cnt::Count)]` enum and take a `&'static cnt::Counters<E>` per
     instance (cnt *Instance counters*), so the firmware names and places them (e.g. `fdcan1`, `fdcan3`).
     Counting is ISR-safe and lock-free, so it is fine in `on_interrupt`. Users opt out with cnt's `disabled`
-    feature. Tracked as FEATURES.md E6.
-  - HIL: read the counters (`counters_ram_buffer()` on target, or `cnt read` from the host) to assert that
-    no unexpected errors / lost frames / overruns happened during a test. Tracked as FEATURES.md Q9.
+    feature. Not plain `cnt!`: `on_interrupt` is one call site for all instances, per-instance call sites
+    would reserve buffer words for instances the firmware doesn't use, and `cnt!` counters can't be read
+    back on the target. Tracked as FEATURES.md E6.
+  - HIL: read the counters on the target with `Counters::get` (embedded-test holds the probe, so `cnt read`
+    only works outside it) to assert that no unexpected errors / lost frames / overruns happened during a
+    test. Tracked as FEATURES.md Q9.
+  - **Never enable cnt's `disabled` feature in a HIL crate.** Features unify across the build, `get` then
+    returns 0 and "nothing went wrong" asserts pass without checking anything. Every HIL crate keeps the
+    compile-time guard `const _: () = assert!(!cnt::DISABLED, ...)` in its `src/lib.rs`.
 - Dependencies: keep them current, record bumps in FEATURES.md (P11), and re-build the example after every
   bump.
 

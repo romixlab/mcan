@@ -3,6 +3,11 @@
 #![no_std]
 
 use defmt_rtt as _;
+
+// Cargo unifies features, so `cnt/disabled` enabled by any crate in the build compiles out the driver's counters
+// too. `Counters::get` then returns 0 and "no lost frames / no errors" asserts would pass without checking
+// anything (FEATURES.md Q9).
+const _: () = assert!(!cnt::DISABLED, "HIL tests need cnt counters, don't enable cnt's `disabled` feature");
 use embassy_stm32::pac::rcc::vals::{Pllm, Plln, Pllsrc};
 use embassy_stm32::rcc::mux::Fdcansel;
 use embassy_stm32::rcc::{

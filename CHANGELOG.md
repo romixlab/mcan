@@ -24,6 +24,8 @@ All notable changes to this crate are recorded here, newest first. The format fo
 - RX FIFO receive (H7): `receive_fifo(RxFifo, &mut buf)` returns an `RxFrameHeader` (ID, RTR, FD/BRS/ESI, length,
   timestamp, filter index) and the copied length, and acknowledges the element. Also `rx_fifo_fill_level` and
   `take_rx_fifo_message_lost`. (Y1, Y6)
+- `hil/b135` depends on `cnt` 0.4.1 and links `cnt.x`. A compile-time guard refuses builds where cnt's `disabled`
+  feature is on, as counter asserts would then pass trivially. (Q9)
 - `hil/b135`: first HIL test crate (embedded-test 0.7.2 + probe-rs 0.32). Internal loopback tests for classic and
   FD frames, FIFO1 routing, FIFO overflow, short buffers and truncation; all pass on B135B. (Q3, Q4)
 - `examples/h7_embassy` `loopback` bin: internal loopback TX → RX smoke test. (D1)
