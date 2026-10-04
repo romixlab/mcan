@@ -8,6 +8,9 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Added
 
+- `hil/b129`: HIL test crate for B129A (STM32G0B1CE, thumbv6m): 12 MHz HSE as FDCAN kernel clock, CAN_STBY (PC13)
+  driven low, `bring_up` (config mode, both instances, every mode) and `idle_bus` (RX recessive, idle without
+  errors, standby). 11 tests pass on B129A (Q3, Q4).
 - `tools/gen-pac`: a Rust (syn/quote) generator for `src/pac` that works from `stm32-metapac` 21.0.0, pinned
   and checksum-verified through its `Cargo.lock`. It copies the FDCAN maps verbatim and trims RCC on the
   syntax tree, keeping Debug/defmt for the remaining fields. It also generates per-chip addresses and the
@@ -79,6 +82,8 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- `into_powered_down` timed out waiting for INIT to clear in clock stop mode; INIT now stays set (M3, M5).
+  Found by `hil/b129` `config_mode_and_back`.
 - The interrupt handler cleared every IR flag, so events nobody had handled were lost (e.g. RFxL for
   `take_rx_fifo_message_lost`). It now handles only enabled flags routed to its line, and latches them. (I1, Y6)
 - Interrupt line 1 never fired: only EINT0 was set in ILE. (I2)
