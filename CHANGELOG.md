@@ -10,7 +10,7 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 - `hil/run-bus.sh`, `hil/common`, `bus` tests in `hil/b129` and `hil/b135`: board <-> board HIL runner for B129A and
   B135B on one bus (frames and 1000-frame soak, both directions, counters must stay 0). Passes on the real
-  boards. (Q5a)
+  boards, with the `ack_missing` and `standby_quiet` scenarios. (Q5a)
 - `hil/b129`: CPU on a 64 MHz PLL; nominal bit timing fixed to 12 tq (was 13, so 923 kbit/s). (Q3)
 - FDCAN lite (G0) frame TX/RX: `FdCan::transmit` (3-element TX FIFO, `Error::TxQueueFull`), `receive_fifo` and
   `RxFrameHeader` on lite cores too, fixed message RAM offsets. `TxBufferIdx` is exported on every chip.

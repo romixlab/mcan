@@ -182,4 +182,34 @@ mod tests {
             defmt::info!("B135 {} {} rx fifo {}", s, c, can.rx_fifo_fill_level(RxFifo::Fifo0));
         }
     }
+
+    /// Listens in bus monitoring mode (never drives the bus) for 15 s (`standby_quiet` in run-bus.sh). B129A first
+    /// transmits id 0x123 with its transceiver in standby: that must never show up. Then it wakes the transceiver
+    /// and sends 0x555, which must show up (so the silence wasn't a dead sender or a broken bus).
+    #[test]
+    fn expect_silence(mut board: Board) {
+        board.connect_fdcan1_pins();
+        let (l, _) = layout(&mut board, (8, DataFieldSize::_64Bytes), (0, DataFieldSize::_8Bytes));
+        let mut can = fdcan1_config(&mut board, l);
+        can.set_nominal_bit_timing(defmt::unwrap!(NominalBitTiming::new(1, 52, 11, 11)));
+        can.set_data_bit_timing(defmt::unwrap!(DataBitTiming::new(1, 26, 5, 5)));
+        let mut can = defmt::unwrap!(can.into_bus_monitoring().map_err(|(e, _)| e));
+        defmt::info!("RX READY");
+        let mut standby_frames = 0;
+        let mut awake_frames = 0;
+        let start = embassy_time::Instant::now();
+        while start.elapsed() < Duration::from_secs(15) {
+            let mut buf = [0u8; 8];
+            if let Some((h, _)) = defmt::unwrap!(can.receive_fifo(RxFifo::Fifo0, &mut buf)) {
+                match h.id {
+                    Id::Standard(s) if s.as_raw() == 0x123 => standby_frames += 1,
+                    Id::Standard(s) if s.as_raw() == 0x555 => awake_frames += 1,
+                    _ => defmt::panic!("unexpected frame {}", h.id),
+                }
+            }
+        }
+        defmt::info!("standby frames {}, awake frames {}", standby_frames, awake_frames);
+        defmt::assert_eq!(standby_frames, 0, "a frame reached the bus with the transceiver in standby");
+        defmt::assert!(awake_frames >= 1, "the frame after wake-up never arrived: sender dead or bus broken");
+    }
 }

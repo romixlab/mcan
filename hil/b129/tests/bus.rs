@@ -168,4 +168,60 @@ mod tests {
             defmt::info!("B129 {} {}", s, c);
         }
     }
+
+    fn header_0() -> TxFrameHeader {
+        TxFrameHeader {
+            frame_format: FrameFormat::Classic,
+            id: Id::Standard(defmt::unwrap!(StandardId::new(0x123))),
+            bit_rate_switching: false,
+            error_state: Esi::EsiDependsOnErrorPassive,
+            marker: None,
+        }
+    }
+
+    /// Nobody ACKs (run with the other board idle, `ack_missing` in run-bus.sh): ACK error, the frame stays pending,
+    /// the transmit error counter rises to error passive (128) and stops there (ACK errors don't push a node to
+    /// bus-off), and the 3-element TX FIFO fills up.
+    #[test]
+    fn no_ack(mut board: Board) {
+        let mut can = bus_up(&mut board);
+        for _ in 0..3 {
+            defmt::unwrap!(can.transmit(header_0(), &[1, 2, 3]));
+        }
+        defmt::assert!(matches!(can.transmit(header_0(), &[4]), Err(Error::TxQueueFull)));
+        embassy_time::block_for(Duration::from_millis(100));
+        let (c, st) = (can.error_counters(), can.protocol_status());
+        defmt::info!("{} {}", st, c);
+        defmt::assert!(!can.is_idle(), "frames were sent without an ACK");
+        defmt::assert!(matches!(st.last_error, mcan::LastErrorCode::Ack), "last error is not Ack");
+        defmt::assert!(st.error_passive && c.transmit >= 128, "TEC {}", c.transmit);
+        defmt::assert!(!st.bus_off);
+    }
+
+    /// Transceiver in standby (STB high): the frame must not reach the bus. Run against `expect_silence` on B135B
+    /// (`standby_quiet` in run-bus.sh); B135B does the asserting. The sender only drives its TX pin into a
+    /// transceiver that ignores it, sees its own dominant bits come back recessive (Bit0 error) and ends up bus-off.
+    #[test]
+    fn send_in_standby(mut board: Board) {
+        board.sleep();
+        let mut can = bus_up(&mut board);
+        defmt::unwrap!(can.transmit(header_0(), &[1]));
+        embassy_time::block_for(Duration::from_millis(500));
+        let (c, st) = (can.error_counters(), can.protocol_status());
+        defmt::info!("standby: {} {}", st, c);
+        defmt::assert!(matches!(st.last_error, mcan::LastErrorCode::Bit0), "expected Bit0 with the bus cut off");
+    }
+
+    /// Same sender with the transceiver awake, id 0x555: it must reach `expect_silence`, so the silence in
+    /// `send_in_standby` isn't a dead sender or a broken bus. B135B only monitors and never ACKs, so the frame is
+    /// retried (ACK errors) and the test doesn't wait for completion.
+    #[test]
+    fn send_awake(mut board: Board) {
+        let mut can = bus_up(&mut board);
+        let mut h = header_0();
+        h.id = Id::Standard(defmt::unwrap!(StandardId::new(0x555)));
+        defmt::unwrap!(can.transmit(h, &[2]));
+        embassy_time::block_for(Duration::from_millis(300));
+        defmt::info!("awake: {} {}", can.protocol_status(), can.error_counters());
+    }
 }

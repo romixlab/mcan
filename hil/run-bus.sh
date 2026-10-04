@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Board <-> board HIL runner (FEATURES.md Q5a): B129A (STLink) and B135B (J-Link) on one CAN bus.
 #
-#   hil/run-bus.sh [scenario ...]      scenarios: frames_129_to_135 frames_135_to_129 soak_129_to_135 soak_135_to_129
+#   hil/run-bus.sh [scenario ...]      scenarios: frames_129_to_135 frames_135_to_129 soak_129_to_135 soak_135_to_129 standby_quiet ack_missing
 #
 # Each scenario starts the receiving board first (it waits up to 30 s for its first frame) and starts the sender once the receiver logged RX READY.
 # Probes are picked by name; override with B129_PROBE / B135_PROBE (`VID:PID:SERIAL` from `probe-rs list`).
@@ -36,7 +36,8 @@ run() { # board test log
   (cd "$1" && cargo test --test bus -q -- "$2") >"bus-logs/$3.log" 2>&1
 }
 
-# $1 scenario, $2 receiver board, $3 receiver test, $4 sender board, $5 sender test
+# $1 scenario, $2 receiver board, $3 receiver test, $4 sender board, $5 sender test, $6 optional second sender
+# test (the board is reset in between, the receiver keeps listening)
 scenario() {
   echo "== $1"
   reset_boards
@@ -45,6 +46,10 @@ scenario() {
   for _ in $(seq 120); do grep -q "RX READY" "bus-logs/$1.rx.log" 2>/dev/null && break; sleep 0.5; done
   grep -q "RX READY" "bus-logs/$1.rx.log" || { echo "FAIL $1: receiver never became ready"; kill $rx 2>/dev/null; failed=1; return; }
   run "$4" "$5" "$1.tx"; tx=$?
+  if [ -n "${6:-}" ]; then
+    probe-rs reset --chip STM32G0B1CEUx --probe "$B129_PROBE" >/dev/null 2>&1
+    run "$4" "$6" "$1.tx2"; tx2=$?; [ $tx -eq 0 ] && tx=$tx2
+  fi
   wait $rx; rxs=$?
   if [ $tx -eq 0 ] && [ $rxs -eq 0 ]; then echo "PASS $1"; else echo "FAIL $1 (sender $tx, receiver $rxs), see hil/bus-logs/$1.*.log"; failed=1; fi
 }
@@ -54,13 +59,15 @@ reset_boards
 # The relay latches, but set it explicitly: B129A has no terminator.
 (cd b135 && cargo test --test bus -q -- terminate_on) >bus-logs/terminate_on.log 2>&1 || { echo "FAIL terminate_on"; exit 1; }
 
-all="frames_129_to_135 frames_135_to_129 soak_129_to_135 soak_135_to_129"
+all="frames_129_to_135 frames_135_to_129 soak_129_to_135 soak_135_to_129 standby_quiet ack_missing"
 for s in ${@:-$all}; do
   case $s in
     frames_129_to_135) scenario $s b135 receive_frames b129 send_frames ;;
     frames_135_to_129) scenario $s b129 receive_frames b135 send_frames ;;
     soak_129_to_135)   scenario $s b135 receive_soak b129 send_soak ;;
     soak_135_to_129)   scenario $s b129 receive_soak b135 send_soak ;;
+    standby_quiet)     scenario $s b135 expect_silence b129 send_in_standby send_awake ;;
+    ack_missing)       echo "== $s"; reset_boards; run b129 no_ack $s && echo "PASS $s" || { echo "FAIL $s, see hil/bus-logs/$s.log"; failed=1; } ;;
     *) echo "unknown scenario $s"; failed=1 ;;
   esac
 done
