@@ -8,6 +8,13 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Added
 
+- `hil/run-bus.sh`, `hil/common`, `bus` tests in `hil/b129` and `hil/b135`: board <-> board HIL runner for B129A and
+  B135B on one bus (frames and 1000-frame soak, both directions, counters must stay 0). Passes on the real
+  boards. (Q5a)
+- `hil/b129`: CPU on a 64 MHz PLL; nominal bit timing fixed to 12 tq (was 13, so 923 kbit/s). (Q3)
+- FDCAN lite (G0) frame TX/RX: `FdCan::transmit` (3-element TX FIFO, `Error::TxQueueFull`), `receive_fifo` and
+  `RxFrameHeader` on lite cores too, fixed message RAM offsets. `TxBufferIdx` is exported on every chip.
+  `hil/b129` `loopback` (classic, FD + BRS, FIFO order) passes on B129A. (R5, Y1, Q5a)
 - `hil/b129`: HIL test crate for B129A (STM32G0B1CE, thumbv6m): 12 MHz HSE as FDCAN kernel clock, CAN_STBY (PC13)
   driven low, `bring_up` (config mode, both instances, every mode) and `idle_bus` (RX recessive, idle without
   errors, standby). 11 tests pass on B129A (Q3, Q4).

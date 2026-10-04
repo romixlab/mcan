@@ -116,6 +116,22 @@ pub fn receive<M: Receive>(
     }
 }
 
+/// Like [receive], with the caller's timeout (a frame from another board may take longer to arrive).
+pub fn receive_before<M: Receive>(
+    can: &mut FdCan<M>,
+    fifo: RxFifo,
+    buf: &mut [u8],
+    timeout: Duration,
+) -> (RxFrameHeader, usize) {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Some(r) = defmt::unwrap!(can.receive_fifo(fifo, buf)) {
+            return r;
+        }
+        defmt::assert!(Instant::now() < deadline, "no frame received");
+    }
+}
+
 /// Test payload: distinct per frame number and byte position.
 pub fn pattern(frame: usize, len: usize) -> [u8; 64] {
     core::array::from_fn(|i| {

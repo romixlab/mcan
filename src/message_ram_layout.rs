@@ -2,7 +2,6 @@ use crate::pac::common::{RW, Reg};
 use crate::pac::message_ram::{
     EventFIFOControl, Rtr, TimeStampCaptureEnable, TxBufferElementT0, TxBufferElementT1,
 };
-#[cfg(feature = "h7")]
 use crate::pac::message_ram::{RxElementR0, RxElementR1, dlc_to_len};
 use crate::tx_rx::{Dlc, TxFrameHeader};
 use crate::{Error, FdCan, FdCanInstance};
@@ -137,6 +136,18 @@ impl MessageRamLayout {
 /// Instance n starts at n * 212 words (RM0444, FDCAN message RAM; stm32-data: FDCAN2 RAM at +0x350).
 #[cfg(not(feature = "h7"))]
 pub(crate) const LITE_INSTANCE_WORDS: usize = 28 + 8 * 2 + 2 * 3 * 18 + 3 * 2 + 3 * 18;
+
+/// Word offsets inside an instance's lite block, and the element size shared by RX FIFO and TX buffer elements
+/// (2 header words + 16 data words, always 64 bytes of data).
+#[cfg(not(feature = "h7"))]
+pub(crate) mod lite {
+    pub(crate) const ELEMENT_WORDS: usize = 18;
+    pub(crate) const RX_FIFO_ELEMENTS: u8 = 3;
+    pub(crate) const RX_FIFO0: usize = 28 + 8 * 2;
+    pub(crate) const RX_FIFO1: usize = RX_FIFO0 + 3 * ELEMENT_WORDS;
+    pub(crate) const TX_BUFFERS: usize = RX_FIFO1 + 3 * ELEMENT_WORDS + 3 * 2;
+    pub(crate) const TX_BUFFER_ELEMENTS: u8 = 3;
+}
 
 /// Message RAM words owned by `instance` on FDCAN lite cores.
 #[cfg(not(feature = "h7"))]
@@ -311,27 +322,85 @@ impl<'a> MessageRam<'a> {
         };
         // SAFETY: the offset lies inside this instance's layout, which lies inside the message RAM.
         let element = unsafe { crate::pac::FDCAN_MSGRAM_ADDR.add(offset as usize) };
-        let r0 = RxElementR0::from_bits(unsafe { element.read_volatile() });
-        let r1 = RxElementR1::from_bits(unsafe { element.add(1).read_volatile() });
-        let len = dlc_to_len(r1.dlc(), r1.fdf());
-        // If the element is smaller than the frame, the M_CAN stores only what fits.
-        let stored = len.min(data_size.max_len());
-        if buf.len() < stored as usize {
-            return Err(Error::BufferTooSmall);
-        }
-        for (i, chunk) in buf[..stored as usize].chunks_mut(4).enumerate() {
-            let word = unsafe { element.add(2 + i).read_volatile() }.to_le_bytes();
-            chunk.copy_from_slice(&word[..chunk.len()]);
-        }
-        Ok((r0, r1, stored, stored < len))
+        unsafe { read_rx_element(element, data_size.max_len(), buf) }
     }
 
     // pub(crate) tx_fifo_put()
     // pub(crate) tx_queue_put()
 }
 
+/// Reads an RX FIFO / buffer element: header words and the data bytes that fit in `buf`. Returns the two header
+/// words, the number of bytes copied and whether the element was too small for the frame (data truncated by
+/// the M_CAN).
+///
+/// # Safety
+/// `element` must point to an RX element inside the message RAM, with at least `2 + max_data.div_ceil(4)` words.
+unsafe fn read_rx_element(
+    element: *const u32,
+    max_data: u8,
+    buf: &mut [u8],
+) -> Result<(RxElementR0, RxElementR1, u8, bool), Error> {
+    let r0 = RxElementR0::from_bits(unsafe { element.read_volatile() });
+    let r1 = RxElementR1::from_bits(unsafe { element.add(1).read_volatile() });
+    let len = dlc_to_len(r1.dlc(), r1.fdf());
+    // If the element is smaller than the frame, the M_CAN stores only what fits.
+    let stored = len.min(max_data);
+    if buf.len() < stored as usize {
+        return Err(Error::BufferTooSmall);
+    }
+    for (i, chunk) in buf[..stored as usize].chunks_mut(4).enumerate() {
+        let word = unsafe { element.add(2 + i).read_volatile() }.to_le_bytes();
+        chunk.copy_from_slice(&word[..chunk.len()]);
+    }
+    Ok((r0, r1, stored, stored < len))
+}
+
 #[cfg(not(feature = "h7"))]
-impl MessageRam {}
+impl MessageRam {
+    /// Base of this instance's block in the message RAM.
+    fn base(&self) -> *mut u32 {
+        // SAFETY: lite_region lies inside the message RAM (host test `lite_regions_are_disjoint_and_fit`).
+        unsafe { crate::pac::FDCAN_MSGRAM_ADDR.add(lite_region(self.instance).start) }
+    }
+
+    /// TX buffer `idx` (the 3 elements of the TX FIFO / queue).
+    pub(crate) fn tx_buffer(&self, idx: u8) -> Result<TxBufferElement, Error> {
+        if idx >= lite::TX_BUFFER_ELEMENTS {
+            return Err(Error::TxBufferIndexOutOfRange);
+        }
+        unsafe {
+            let t0 = self
+                .base()
+                .add(lite::TX_BUFFERS + idx as usize * lite::ELEMENT_WORDS);
+            Ok(TxBufferElement {
+                t0: Reg::from_ptr(t0 as *mut _),
+                t1: Reg::from_ptr(t0.add(1) as *mut _),
+                data: core::slice::from_raw_parts_mut(t0.add(2), lite::ELEMENT_WORDS - 2),
+            })
+        }
+    }
+
+    /// Reads RX FIFO element `idx`, see the H7 variant.
+    pub(crate) fn read_rx_fifo_element(
+        &self,
+        fifo: RxFifo,
+        idx: u8,
+        buf: &mut [u8],
+    ) -> Result<(RxElementR0, RxElementR1, u8, bool), Error> {
+        if idx >= lite::RX_FIFO_ELEMENTS {
+            return Err(Error::RxFifoIndexOutOfRange);
+        }
+        let start = match fifo {
+            RxFifo::Fifo0 => lite::RX_FIFO0,
+            RxFifo::Fifo1 => lite::RX_FIFO1,
+        };
+        // SAFETY: inside this instance's block.
+        unsafe {
+            let element = self.base().add(start + idx as usize * lite::ELEMENT_WORDS);
+            read_rx_element(element, 64, buf)
+        }
+    }
+}
 
 impl<M> FdCan<M> {
     #[cfg(feature = "h7")]

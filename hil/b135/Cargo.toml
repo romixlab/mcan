@@ -18,6 +18,11 @@ name = "interrupts"
 harness = false
 
 [[test]]
+name = "bus"
+harness = false
+test = false # needs two boards: `cargo test --test bus`, see hil/run-bus.sh
+
+[[test]]
 name = "errors"
 harness = false
 
@@ -26,6 +31,7 @@ name = "test_mode"
 harness = false
 
 [dependencies]
+hil-common = { path = "../common" }
 mcan = { path = "../..", features = ["h7", "embassy", "defmt"] }
 embassy-stm32 = { version = "0.6.0", features = ["defmt", "time-driver-any", "stm32h725ig", "memory-x", "unstable-pac"] }
 embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }

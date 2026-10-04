@@ -14,10 +14,20 @@ name = "bring_up"
 harness = false
 
 [[test]]
+name = "loopback"
+harness = false
+
+[[test]]
+name = "bus"
+harness = false
+test = false # needs two boards: `cargo test --test bus`, see hil/run-bus.sh
+
+[[test]]
 name = "idle_bus"
 harness = false
 
 [dependencies]
+hil-common = { path = "../common" }
 mcan = { path = "../..", features = ["g0", "embassy", "defmt"] }
 embassy-stm32 = { version = "0.6.0", features = ["defmt", "time-driver-tim2", "stm32g0b1ce", "memory-x", "unstable-pac"] }
 embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }

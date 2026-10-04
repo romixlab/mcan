@@ -1,16 +1,12 @@
 use crate::Id;
-#[cfg(feature = "h7")]
 use crate::fdcan::Receive;
 use crate::fdcan::Transmit;
-#[cfg(feature = "h7")]
 use crate::message_ram_layout::RxFifo;
 use crate::message_ram_layout::TxBufferIdx;
 use crate::pac::message_ram::{Esi, FrameFormat};
-#[cfg(feature = "h7")]
 use crate::pac::message_ram::{RxElementR0, RxElementR1, Xtd, dlc_to_len};
 use crate::util::checked_wait;
 use crate::{Error, FdCan};
-#[cfg(feature = "h7")]
 use crate::{ExtendedId, StandardId};
 
 #[derive(Copy, Clone)]
@@ -35,6 +31,7 @@ pub enum Dlc {
 }
 
 impl Dlc {
+    #[cfg(feature = "h7")]
     const fn len(&self) -> u8 {
         *self as u8
     }
@@ -320,6 +317,38 @@ impl<M: Transmit> FdCan<M> {
     }
 }
 
+/// FDCAN lite cores (G0, G4, L5, H5): fixed RAM layout with a 3-element TX FIFO, no dedicated TX buffers.
+#[cfg(not(feature = "h7"))]
+impl<M: Transmit> FdCan<M> {
+    /// Queues a frame in the TX FIFO (elements are sent in the order they were put) and requests transmission.
+    ///
+    /// Returns the buffer index, usable with [FdCan::abort_blocking]. [Error::TxQueueFull] if all 3 elements are
+    /// pending. `data.len()` must be a valid CAN FD length (0..=8, 12, 16, 20, 24, 32, 48, 64).
+    pub fn transmit(&mut self, tx_header: TxFrameHeader, data: &[u8]) -> Result<TxBufferIdx, Error> {
+        let Some(dlc) = Dlc::from_len(data.len()) else {
+            return Err(Error::WrongDataSize);
+        };
+        if self.tx_queue_is_full() {
+            return Err(Error::TxQueueFull);
+        }
+        // TX FIFO put index: the element the core will send next after the ones already queued.
+        let idx = TxBufferIdx {
+            instance: self.instance,
+            idx: self.can.txfqs().read().tfqpi(),
+        };
+        let mut tx_buffer = self.message_ram().tx_buffer(idx.idx)?;
+        tx_buffer.fill(&tx_header, dlc);
+        for (d, chunk) in tx_buffer.data.iter_mut().zip(data.chunks(4)) {
+            // The last chunk may be shorter than 4 bytes, pad it with zeros.
+            let mut word = [0u8; 4];
+            word[..chunk.len()].copy_from_slice(chunk);
+            *d = u32::from_le_bytes(word);
+        }
+        self.can.txbar().write(|w| w.set_ar(idx.idx(), true));
+        Ok(idx)
+    }
+}
+
 /// Header of a received frame.
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -342,7 +371,6 @@ pub struct RxFrameHeader {
     pub filter_index: Option<u8>,
 }
 
-#[cfg(feature = "h7")]
 impl RxFrameHeader {
     pub(crate) fn from_element(r0: RxElementR0, r1: RxElementR1, truncated: bool) -> Self {
         let id = match r0.xtd() {
@@ -368,7 +396,6 @@ impl RxFrameHeader {
     }
 }
 
-#[cfg(feature = "h7")]
 impl<M: Receive> FdCan<M> {
     /// Takes the oldest frame out of an RX FIFO and copies its data into `buf`.
     ///

@@ -28,8 +28,9 @@ pub use interrupt::{InterruptLine, Interrupts, on_interrupt};
 #[cfg(feature = "h7")]
 pub use message_ram_builder::{MessageRamBuilder, MessageRamBuilderError, RamBuilderInitialState};
 pub use message_ram_layout::RxFifo;
+pub use message_ram_layout::TxBufferIdx;
 #[cfg(feature = "h7")]
-pub use message_ram_layout::{DataFieldSize, MessageRamLayout, TxBufferIdx};
+pub use message_ram_layout::{DataFieldSize, MessageRamLayout};
 pub use status::{Activity, ErrorCounters, ErrorState, LastErrorCode, ProtocolStatus};
 pub use tx_rx::{RxFrameHeader, TxFrameHeader};
 

@@ -1,0 +1,48 @@
+warning: unexpected `cfg` condition value: `defmt`
+  --> /home/roman/git/mcan/hil/common/src/lib.rs:19:12
+   |
+19 | #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+   |            ^^^^^^^^^^^^^^^^^ help: remove the condition
+   |
+   = note: no expected values for `feature`
+   = help: consider adding `defmt` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: methods `as_raw_id`, `with_rtr`, and `is_standard` are never used
+   --> /home/roman/git/mcan/src/id.rs:174:19
+    |
+151 | impl IdReg {
+    | ---------- methods in this implementation
+...
+174 |     pub(crate) fn as_raw_id(&self) -> u32 {
+    |                   ^^^^^^^^^
+...
+193 |     pub(crate) fn with_rtr(self, rtr: bool) -> Self {
+    |                   ^^^^^^^^
+...
+222 |     pub fn is_standard(self) -> bool {
+    |            ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+     [38;5;10m[1mFinished[0m in 6.30s
+
+running 1 test
+test tests::diag_listen ... 1.000061 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+2.000152 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+3.000244 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+4.000335 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+5.000427 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+6.000518 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+7.000610 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+8.000701 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+9.000793 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+10.000885 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+11.000976 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+12.001068 [INFO ] B135 ProtocolStatus { last_error: NoChange, data_last_error: NoChange, activity: Idle, error_warning: false, error_passive: false, bus_off: false, received_esi: false, received_brs: false, received_fd: false, protocol_exception: false, tdc_value: 0 } ErrorCounters { transmit: 0, receive: 0, receive_error_passive: false, error_logging: 0 } rx fifo 0 (bus b135/tests/bus.rs:173)
+12.001159 [INFO ] Test exited with () or Ok(..) (embedded_test embedded-test-0.7.2/src/fmt.rs:36)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 12.29s
+

@@ -300,8 +300,6 @@ pub(crate) struct RxElementR1 {
 
 /// Data length in bytes for a DLC. Classic frames carry at most 8 bytes, DLC 9..=15 still means 8
 /// (ISO 11898-1); CAN FD maps 9..=15 to 12, 16, 20, 24, 32, 48, 64.
-// TODO(Y1): lite RX path (R5), then drop the cfg.
-#[cfg(any(feature = "h7", test))]
 pub(crate) const fn dlc_to_len(dlc: u8, format: FrameFormat) -> u8 {
     match (dlc & 0x0F, format) {
         (d @ 0..=8, _) => d,

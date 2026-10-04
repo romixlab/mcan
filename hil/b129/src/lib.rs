@@ -14,7 +14,7 @@ const _: () = assert!(!cnt::DISABLED, "HIL tests need cnt counters, don't enable
 
 use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_stm32::rcc::mux::Fdcansel;
-use embassy_stm32::rcc::{Hse, HseMode, Sysclk};
+use embassy_stm32::rcc::{Hse, HseMode, Pll, PllMul, PllPreDiv, PllRDiv, PllSource, Sysclk};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::{Config, Peripherals};
 use mcan::{
@@ -31,7 +31,17 @@ pub fn init_clocks() -> Peripherals {
         freq: Hertz::mhz(12),
         mode: HseMode::Oscillator,
     });
-    config.rcc.sys = Sysclk::HSE;
+    // CPU at 64 MHz (12 MHz / 1 * 16 / 3): the RX FIFO has only 3 elements, a slow CPU loses frames of a back to
+    // back burst. The FDCAN kernel clock stays the crystal.
+    config.rcc.pll = Some(Pll {
+        source: PllSource::HSE,
+        prediv: PllPreDiv::DIV1,
+        mul: PllMul::MUL16,
+        divp: None,
+        divq: None,
+        divr: Some(PllRDiv::DIV3),
+    });
+    config.rcc.sys = Sysclk::PLL1_R;
     config.rcc.mux.fdcansel = Fdcansel::HSE;
     embassy_stm32::init(config)
 }
@@ -80,12 +90,33 @@ impl Board {
         );
     }
 
-    /// FDCAN1 in Config mode at 1 Mbit/s nominal (87.5 % sample point) and 2 Mbit/s data (12 MHz kernel clock).
+    /// FDCAN1 in Config mode at 1 Mbit/s nominal (83 % sample point, 12 tq: sync 1 + seg1 9 + seg2 2) and 2 Mbit/s data (12 MHz kernel clock).
     pub fn fdcan1_config(&mut self) -> FdCan<ConfigMode> {
         let can = defmt::unwrap!(self.instances.take_enabled(FdCanInstance::FdCan1));
         let mut can = defmt::unwrap!(can.into_config_mode());
-        can.set_nominal_bit_timing(defmt::unwrap!(NominalBitTiming::new(1, 10, 2, 2)));
+        can.set_nominal_bit_timing(defmt::unwrap!(NominalBitTiming::new(1, 9, 2, 2)));
         can.set_data_bit_timing(defmt::unwrap!(DataBitTiming::new(1, 4, 1, 1)));
         can
     }
+}
+
+/// Classic CAN data frame header.
+pub fn classic(id: mcan::Id) -> mcan::TxFrameHeader {
+    use mcan::pac::message_ram::{Esi, FrameFormat};
+    mcan::TxFrameHeader {
+        frame_format: FrameFormat::Classic,
+        id,
+        bit_rate_switching: false,
+        error_state: Esi::EsiDependsOnErrorPassive,
+        marker: None,
+    }
+}
+
+/// Deterministic test payload: byte `i` of frame number `n`.
+pub fn pattern(n: usize, len: usize) -> [u8; 64] {
+    let mut data = [0u8; 64];
+    for (i, b) in data[..len].iter_mut().enumerate() {
+        *b = (n * 31 + i * 7 + 1) as u8;
+    }
+    data
 }

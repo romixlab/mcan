@@ -121,6 +121,8 @@ pub enum Error {
     /// The RX FIFO get index points outside the FIFO configured in the layout.
     RxFifoIndexOutOfRange,
     WrongDataSize,
+    /// The TX FIFO / queue has no free element (lite cores: 3 elements).
+    TxQueueFull,
     /// The buffer passed to a receive function is shorter than the received data. The frame stays in the FIFO.
     BufferTooSmall,
 }
