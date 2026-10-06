@@ -34,7 +34,10 @@ its relevance for analyzers vs. nodes, and its test coverage.
   features, dependency or `stm32-metapac` bumps, and tooling. Pure refactors and doc typos don't need one.
 - Reference feature IDs in parentheses, e.g. `(P7a)`. Keep entries short and user-facing; details belong
   in FEATURES.md and commit messages.
-- On a release, rename `[Unreleased]` to the version and date and start a new empty `[Unreleased]`.
+- A commit that bumps the version (see *Versions*) moves the `[Unreleased]` entries under a new
+  `## [x.y.z] - YYYY-MM-DD` heading and leaves `[Unreleased]` empty, so every version has its own section.
+- Questions like "what's new" or "what changed since X" are answered from CHANGELOG.md, newest sections first
+  (the user's version or date as the cutoff), with FEATURES.md for current status.
 
 ## Layout
 
