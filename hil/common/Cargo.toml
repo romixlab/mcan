@@ -1,0 +1,6 @@
+[package]
+name = "hil-common"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Frame set shared by the board <-> board HIL tests (FEATURES.md Q5a), no dependencies"

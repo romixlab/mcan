@@ -730,9 +730,8 @@ impl FdCan<ConfigMode> {
         if let Err(e) = self.set_power_down_mode(true) {
             return Err((e, self.into_mode()));
         }
-        if let Err(e) = self.leave_init_mode() {
-            return Err((e, self.into_mode()));
-        }
+        // INIT stays set in clock stop mode: its clock is stopped, so clearing INIT would never be visible and
+        // timed out (found on B129A). Leaving the mode clears CSR first, see `try_config_mode`.
         Ok(self.into_mode())
     }
 

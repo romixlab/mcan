@@ -8,6 +8,16 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Added
 
+- `hil/run-bus.sh`, `hil/common`, `bus` tests in `hil/b129` and `hil/b135`: board <-> board HIL runner for B129A and
+  B135B on one bus (frames and 1000-frame soak, both directions, counters must stay 0). Passes on the real
+  boards, with the `ack_missing` and `standby_quiet` scenarios. (Q5a)
+- `hil/b129`: CPU on a 64 MHz PLL; nominal bit timing fixed to 12 tq (was 13, so 923 kbit/s). (Q3)
+- FDCAN lite (G0) frame TX/RX: `FdCan::transmit` (3-element TX FIFO, `Error::TxQueueFull`), `receive_fifo` and
+  `RxFrameHeader` on lite cores too, fixed message RAM offsets. `TxBufferIdx` is exported on every chip.
+  `hil/b129` `loopback` (classic, FD + BRS, FIFO order) passes on B129A. (R5, Y1, Q5a)
+- `hil/b129`: HIL test crate for B129A (STM32G0B1CE, thumbv6m): 12 MHz HSE as FDCAN kernel clock, CAN_STBY (PC13)
+  driven low, `bring_up` (config mode, both instances, every mode) and `idle_bus` (RX recessive, idle without
+  errors, standby). 11 tests pass on B129A (Q3, Q4).
 - `tools/gen-pac`: a Rust (syn/quote) generator for `src/pac` that works from `stm32-metapac` 21.0.0, pinned
   and checksum-verified through its `Cargo.lock`. It copies the FDCAN maps verbatim and trims RCC on the
   syntax tree, keeping Debug/defmt for the remaining fields. It also generates per-chip addresses and the
@@ -79,6 +89,8 @@ All notable changes to this crate are recorded here, newest first. The format fo
 
 ### Fixed
 
+- `into_powered_down` timed out waiting for INIT to clear in clock stop mode; INIT now stays set (M3, M5).
+  Found by `hil/b129` `config_mode_and_back`.
 - The interrupt handler cleared every IR flag, so events nobody had handled were lost (e.g. RFxL for
   `take_rx_fifo_message_lost`). It now handles only enabled flags routed to its line, and latches them. (I1, Y6)
 - Interrupt line 1 never fired: only EINT0 was set in ILE. (I2)
